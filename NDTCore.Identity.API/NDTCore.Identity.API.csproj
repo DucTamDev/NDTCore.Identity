@@ -1,0 +1,21 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+	<PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.15" />
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="6.4.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NDTCore.Identity.Application\NDTCore.Identity.Application.csproj" />
+    <ProjectReference Include="..\NDTCore.Identity.Contracts\NDTCore.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\NDTCore.Identity.Domain\NDTCore.Identity.Domain.csproj" />
+    <ProjectReference Include="..\NDTCore.Identity.Infrastructure\NDTCore.Identity.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

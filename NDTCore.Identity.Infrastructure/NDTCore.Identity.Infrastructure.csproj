@@ -1,0 +1,22 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="Persistence\Migrations\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\NDTCore.Identity.Contracts\NDTCore.Identity.Contracts.csproj" />
+    <ProjectReference Include="..\NDTCore.Identity.Domain\NDTCore.Identity.Domain.csproj" />
+  </ItemGroup>
+  
+  <ItemGroup>
+	<PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.15" />
+  </ItemGroup>
+	
+</Project>
