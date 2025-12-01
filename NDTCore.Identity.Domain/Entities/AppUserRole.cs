@@ -1,10 +1,12 @@
 ﻿using Microsoft.AspNetCore.Identity;
 
-namespace NDTCore.Identity.Domain.Entities
+namespace NDTCore.Identity.Domain.Entities;
+
+public class AppUserRole : IdentityUserRole<Guid>
 {
-    public class AppUserRole : IdentityUserRole<Guid>
-    {
-        public AppUser AppUser { get; set; } = default!;
-        public AppRole AppRole { get; set; } = default!;
-    }
+    public DateTime AssignedAt { get; set; } = DateTime.UtcNow;
+    public string? AssignedBy { get; set; }
+
+    public AppUser AppUser { get; set; } = default!;
+    public AppRole AppRole { get; set; } = default!;
 }

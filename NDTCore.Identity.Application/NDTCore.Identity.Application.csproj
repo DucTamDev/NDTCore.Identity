@@ -7,11 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="Validators\" />
-    <Folder Include="Services\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\NDTCore.Identity.Contracts\NDTCore.Identity.Contracts.csproj" />
     <ProjectReference Include="..\NDTCore.Identity.Domain\NDTCore.Identity.Domain.csproj" />
   </ItemGroup>

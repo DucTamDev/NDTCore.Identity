@@ -1,9 +1,8 @@
 ﻿using Microsoft.AspNetCore.Identity;
 
-namespace NDTCore.Identity.Domain.Entities
+namespace NDTCore.Identity.Domain.Entities;
+
+public class AppUserClaim : IdentityUserClaim<Guid>
 {
-    public class AppUserClaim : IdentityUserClaim<Guid>
-    {
-        public AppUser AppUser { get; set; } = default!;
-    }
+    public AppUser AppUser { get; set; } = default!;
 }

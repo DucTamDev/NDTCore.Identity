@@ -8,10 +8,10 @@ namespace NDTCore.Identity.Domain.Entities
         // === Profile Information ===
         public required string FirstName { get; set; }
         public required string LastName { get; set; }
+        public string FullName => $"{FirstName} {LastName}".Trim();
         public string? AvatarUrl { get; set; }
         public DateTime? DateOfBirth { get; set; }
         public string? Gender { get; set; }
-        public string FullName => $"{FirstName} {LastName}".Trim();
 
         // === Contact Info ===
         public string? Address { get; set; }
@@ -23,6 +23,7 @@ namespace NDTCore.Identity.Domain.Entities
         // === Account Status ===
         public bool IsActive { get; set; }
         public bool IsDeleted { get; set; }
+        public DateTime? DeletedAt { get; set; }
         public DateTime? LastLoginAt { get; set; }
 
         // === Audit Information ===
@@ -36,5 +37,6 @@ namespace NDTCore.Identity.Domain.Entities
         public ICollection<AppUserLogin> AppUserLogins { get; set; } = new List<AppUserLogin>();
         public ICollection<AppUserToken> AppUserTokens { get; set; } = new List<AppUserToken>();
         public ICollection<AppUserRole> AppUserRoles { get; set; } = new List<AppUserRole>();
+        public ICollection<AppUserRefreshToken> AppUserRefreshTokens { get; set; } = new List<AppUserRefreshToken>();
     }
 }

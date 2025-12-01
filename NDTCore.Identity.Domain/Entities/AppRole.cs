@@ -6,6 +6,8 @@ namespace NDTCore.Identity.Domain.Entities
     public class AppRole : IdentityRole<Guid>, IAuditableEntity, IAggregateRoot
     {
         public string? Description { get; set; }
+        public int Priority { get; set; }
+        public bool IsSystemRole { get; set; }
 
         // === Audit Information ===
         public DateTime? CreatedAt { get; set; }
