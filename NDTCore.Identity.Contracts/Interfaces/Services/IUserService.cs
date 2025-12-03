@@ -1,6 +1,6 @@
 ﻿using NDTCore.Identity.Contracts.Common;
-using NDTCore.Identity.Contracts.DTOs.Users;
-using NDTCore.Identity.Contracts.Responses;
+using NDTCore.Identity.Contracts.Features.Users.DTOs;
+using NDTCore.Identity.Contracts.Features.Users.Requests;
 
 namespace NDTCore.Identity.Contracts.Interfaces.Services;
 

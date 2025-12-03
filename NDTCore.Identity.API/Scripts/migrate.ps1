@@ -54,13 +54,13 @@ Write-Host ""
 Write-Host "[Step 2/4] Creating new migration..." -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Migration: NdtCoreIdentityMigration"
-Write-Host "Context: NdtCoreIdentityDbContext"
+Write-Host "Context: IdentityDbContext"
 Write-Host "Output: Persistence/Migrations/AspNetIdentityDb"
 Write-Host ""
 
 try {
     dotnet ef migrations add NdtCoreIdentityMigration `
-        --context NdtCoreIdentityDbContext `
+        --context IdentityDbContext `
         --project $ProjectPath `
         --startup-project $StartupProject `
         --output-dir Persistence/Migrations/AspNetIdentityDb `
@@ -91,7 +91,7 @@ $SqlScriptPath = Join-Path $IdentityMigrations "AspNetIdentityDb.sql"
 
 try {
     dotnet ef migrations script `
-        --context NdtCoreIdentityDbContext `
+        --context IdentityDbContext `
         --project $ProjectPath `
         --startup-project $StartupProject `
         --output $SqlScriptPath `
@@ -121,7 +121,7 @@ Write-Host ""
 
 try {
     dotnet ef database update `
-        --context NdtCoreIdentityDbContext `
+        --context IdentityDbContext `
         --project $ProjectPath `
         --startup-project $StartupProject `
         --verbose

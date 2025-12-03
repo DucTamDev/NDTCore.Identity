@@ -2,11 +2,19 @@
 
 namespace NDTCore.Identity.API.Middleware;
 
+/// <summary>
+/// Middleware for logging HTTP requests
+/// </summary>
 public class RequestLoggingMiddleware
 {
     private readonly RequestDelegate _next;
     private readonly ILogger<RequestLoggingMiddleware> _logger;
 
+    /// <summary>
+    /// Initializes a new instance of the RequestLoggingMiddleware class
+    /// </summary>
+    /// <param name="next">The next middleware in the pipeline</param>
+    /// <param name="logger">The logger</param>
     public RequestLoggingMiddleware(RequestDelegate next, ILogger<RequestLoggingMiddleware> logger)
     {
         _next = next;
@@ -43,8 +51,16 @@ public class RequestLoggingMiddleware
     }
 }
 
+/// <summary>
+/// Extension methods for request logging middleware
+/// </summary>
 public static class RequestLoggingMiddlewareExtensions
 {
+    /// <summary>
+    /// Adds request logging middleware to the pipeline
+    /// </summary>
+    /// <param name="builder">The application builder</param>
+    /// <returns>The application builder for chaining</returns>
     public static IApplicationBuilder UseRequestLogging(this IApplicationBuilder builder)
     {
         return builder.UseMiddleware<RequestLoggingMiddleware>();

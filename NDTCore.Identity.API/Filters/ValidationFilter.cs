@@ -1,12 +1,20 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Filters;
-using NDTCore.Identity.Contracts.Responses;
+using NDTCore.Identity.Contracts.Common;
 
-namespace NDTCore.Identity.API.Filters
+namespace NDTCore.Identity.API.Filters;
+
+/// <summary>
+/// Action filter for validating model state
+/// </summary>
+public class ValidationFilter : IAsyncActionFilter
 {
-    public class ValidationFilter : IAsyncActionFilter
-    {
-        public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    /// <summary>
+    /// Executes the action filter asynchronously
+    /// </summary>
+    /// <param name="context">The action executing context</param>
+    /// <param name="next">The action execution delegate</param>
+    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
         {
             if (!context.ModelState.IsValid)
             {
@@ -24,7 +32,6 @@ namespace NDTCore.Identity.API.Filters
                 return;
             }
 
-            await next();
-        }
+        await next();
     }
 }

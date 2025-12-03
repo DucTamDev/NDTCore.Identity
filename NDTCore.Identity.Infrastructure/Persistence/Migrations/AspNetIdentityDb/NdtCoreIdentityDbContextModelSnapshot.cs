@@ -10,8 +10,8 @@ using NDTCore.Identity.Infrastructure.Persistence.Context;
 
 namespace NDTCore.Identity.Infrastructure.Persistence.Migrations.AspNetIdentityDb
 {
-    [DbContext(typeof(NdtCoreIdentityDbContext))]
-    partial class NdtCoreIdentityDbContextModelSnapshot : ModelSnapshot
+    [DbContext(typeof(IdentityDbContext))]
+    partial class IdentityDbContextModelSnapshot : ModelSnapshot
     {
         protected override void BuildModel(ModelBuilder modelBuilder)
         {

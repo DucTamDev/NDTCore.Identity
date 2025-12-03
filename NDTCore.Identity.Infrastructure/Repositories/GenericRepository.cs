@@ -6,10 +6,10 @@ namespace NDTCore.Identity.Infrastructure.Repositories
 {
     public class GenericRepository<T> : IGenericRepository<T> where T : class
     {
-        protected readonly NdtCoreIdentityDbContext _dbContext;
+        protected readonly IdentityDbContext _dbContext;
         private readonly DbSet<T> _dbSet;
 
-        public GenericRepository(NdtCoreIdentityDbContext dbContext)
+        public GenericRepository(IdentityDbContext dbContext)
         {
             _dbContext = dbContext;
             _dbSet = dbContext.Set<T>();

@@ -1,15 +1,23 @@
-﻿using NDTCore.Identity.Contracts.Responses;
+﻿using NDTCore.Identity.Contracts.Common;
 using System.Net;
 using System.Text.Json;
 
 namespace NDTCore.Identity.API.Middleware;
 
-public class GlobalExceptionMiddleware
+/// <summary>
+/// Middleware for handling global exceptions
+/// </summary>
+public class ExceptionHandlingMiddleware
 {
     private readonly RequestDelegate _next;
-    private readonly ILogger<GlobalExceptionMiddleware> _logger;
+    private readonly ILogger<ExceptionHandlingMiddleware> _logger;
 
-    public GlobalExceptionMiddleware(RequestDelegate next, ILogger<GlobalExceptionMiddleware> logger)
+    /// <summary>
+    /// Initializes a new instance of the ExceptionHandlingMiddleware class
+    /// </summary>
+    /// <param name="next">The next middleware in the pipeline</param>
+    /// <param name="logger">The logger</param>
+    public ExceptionHandlingMiddleware(RequestDelegate next, ILogger<ExceptionHandlingMiddleware> logger)
     {
         _next = next;
         _logger = logger;
@@ -76,10 +84,18 @@ public class GlobalExceptionMiddleware
     }
 }
 
-public static class GlobalExceptionMiddlewareExtensions
+/// <summary>
+/// Extension methods for exception handling middleware
+/// </summary>
+public static class ExceptionHandlingMiddlewareExtensions
 {
-    public static IApplicationBuilder UseGlobalExceptionHandler(this IApplicationBuilder builder)
+    /// <summary>
+    /// Adds exception handling middleware to the pipeline
+    /// </summary>
+    /// <param name="builder">The application builder</param>
+    /// <returns>The application builder for chaining</returns>
+    public static IApplicationBuilder UseExceptionHandling(this IApplicationBuilder builder)
     {
-        return builder.UseMiddleware<GlobalExceptionMiddleware>();
+        return builder.UseMiddleware<ExceptionHandlingMiddleware>();
     }
 }

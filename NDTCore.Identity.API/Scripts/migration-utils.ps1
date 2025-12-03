@@ -12,7 +12,7 @@ $ErrorActionPreference = "Stop"
 $ProjectName = "NDTCore.Identity.Infrastructure"
 $StartupProject = $PWD.Path
 $ProjectPath = Join-Path $PWD.Path ("..\" + $ProjectName)
-$Context = "NdtCoreIdentityDbContext"
+$Context = "IdentityDbContext"
 $MigrationsBase = Join-Path $ProjectPath "Persistence\Migrations"
 $MigrationsDir = Join-Path $MigrationsBase "AspNetIdentityDb"
 

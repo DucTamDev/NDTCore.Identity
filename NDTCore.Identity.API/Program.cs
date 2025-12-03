@@ -1,11 +1,12 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using NDTCore.Identity.API.Configuration;
 using NDTCore.Identity.API.Filters;
 using NDTCore.Identity.API.HealthChecks;
 using NDTCore.Identity.API.Middleware;
 using NDTCore.Identity.Application;
-using NDTCore.Identity.Contracts.AppSettings;
+using NDTCore.Identity.Contracts.Configuration;
 using NDTCore.Identity.Infrastructure;
 using Serilog;
 using System.Text;
@@ -35,7 +36,7 @@ try
 
     // Add services to the container
     builder.Services.AddApplicationServices();
-    builder.Services.AddInfrastructureServiceCollection(builder.Configuration);
+    builder.Services.AddInfrastructureServices(builder.Configuration);
 
     // JWT Configuration
     var jwtSettings = builder.Configuration.GetSection(JwtSettings.SectionName).Get<JwtSettings>()
@@ -80,11 +81,8 @@ try
         };
     });
 
-    builder.Services.AddAuthorization(options =>
-    {
-        options.AddPolicy("AdminOnly", policy => policy.RequireRole("Admin"));
-        options.AddPolicy("UserOrAdmin", policy => policy.RequireRole("User", "Admin"));
-    });
+    // Authorization Policies (RBAC)
+    builder.Services.AddAuthorizationPolicies();
 
     // Rate Limiting
     builder.Services.AddRateLimiter(options =>
@@ -202,13 +200,12 @@ try
         app.UseSwaggerUI(options =>
         {
             options.SwaggerEndpoint("/swagger/v1/swagger.json", "NDTCore Identity API v1");
-            options.RoutePrefix = string.Empty;
             options.DocExpansion(Swashbuckle.AspNetCore.SwaggerUI.DocExpansion.None);
         });
     }
 
     // Middleware pipeline
-    app.UseGlobalExceptionHandler();
+    app.UseExceptionHandling();
     app.UseRequestLogging();
 
     app.UseHttpsRedirection();

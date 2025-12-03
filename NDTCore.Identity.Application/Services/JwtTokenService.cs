@@ -1,6 +1,6 @@
 ﻿using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using NDTCore.Identity.Contracts.AppSettings;
+using NDTCore.Identity.Contracts.Configuration;
 using NDTCore.Identity.Contracts.Interfaces.Services;
 using NDTCore.Identity.Domain.Entities;
 using System.IdentityModel.Tokens.Jwt;

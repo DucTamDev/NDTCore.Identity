@@ -8,6 +8,7 @@ public class AppUserRefreshToken : BaseEntity
     public required string Token { get; set; }
     public required string JwtId { get; set; }
     public DateTime ExpiresAt { get; set; }
+    public bool IsActive { get; set; }
     public bool IsRevoked { get; set; }
     public DateTime? RevokedAt { get; set; }
     public string? RevokedByIp { get; set; }
@@ -17,5 +18,4 @@ public class AppUserRefreshToken : BaseEntity
     public AppUser AppUser { get; set; } = default!;
 
     public bool IsExpired => DateTime.UtcNow >= ExpiresAt;
-    public bool IsActive => !IsRevoked && !IsExpired;
 }

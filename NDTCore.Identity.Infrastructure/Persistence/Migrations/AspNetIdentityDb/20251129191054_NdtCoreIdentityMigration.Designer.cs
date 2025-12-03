@@ -11,7 +11,7 @@ using NDTCore.Identity.Infrastructure.Persistence.Context;
 
 namespace NDTCore.Identity.Infrastructure.Persistence.Migrations.AspNetIdentityDb
 {
-    [DbContext(typeof(NdtCoreIdentityDbContext))]
+    [DbContext(typeof(IdentityDbContext))]
     [Migration("20251129191054_NdtCoreIdentityMigration")]
     partial class NdtCoreIdentityMigration
     {

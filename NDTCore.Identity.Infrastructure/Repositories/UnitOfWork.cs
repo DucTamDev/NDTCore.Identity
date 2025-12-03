@@ -6,10 +6,10 @@ namespace NDTCore.Identity.Infrastructure.Repositories
 {
     public class UnitOfWork : IUnitOfWork
     {
-        private readonly NdtCoreIdentityDbContext _dbContext;
+        private readonly IdentityDbContext _dbContext;
         private IDbContextTransaction? _currentTransaction;
 
-        public UnitOfWork(NdtCoreIdentityDbContext dbContext)
+        public UnitOfWork(IdentityDbContext dbContext)
         {
             _dbContext = dbContext ?? throw new ArgumentNullException(nameof(dbContext));
         }

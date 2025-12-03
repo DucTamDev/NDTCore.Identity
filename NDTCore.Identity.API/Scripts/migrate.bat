@@ -50,12 +50,12 @@ echo.
 echo [Step 2/4] Creating new migration...
 echo.
 echo Migration: NdtCoreIdentityMigration
-echo Context: NdtCoreIdentityDbContext
+echo Context: IdentityDbContext
 echo Output: Persistence/Migrations/NdtCoreIdentityDb
 echo.
 
 dotnet ef migrations add NdtCoreIdentityMigration ^
-    --context NdtCoreIdentityDbContext ^
+    --context IdentityDbContext ^
     --project "%PROJECT_PATH%" ^
     --startup-project "%STARTUP_PROJECT%" ^
     --output-dir Persistence/Migrations/NdtCoreIdentityDb ^
@@ -77,7 +77,7 @@ echo [Step 3/4] Generating SQL script...
 echo.
 
 dotnet ef migrations script ^
-    --context NdtCoreIdentityDbContext ^
+    --context IdentityDbContext ^
     --project "%PROJECT_PATH%" ^
     --startup-project "%STARTUP_PROJECT%" ^
     --output "%IDENTITY_MIGRATIONS%\NdtCoreIdentityDb.sql" ^
@@ -100,7 +100,7 @@ echo [Step 4/4] Updating database...
 echo.
 
 dotnet ef database update ^
-    --context NdtCoreIdentityDbContext ^
+    --context IdentityDbContext ^
     --project "%PROJECT_PATH%" ^
     --startup-project "%STARTUP_PROJECT%" ^
     --verbose
