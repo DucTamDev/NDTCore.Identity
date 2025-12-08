@@ -4,7 +4,7 @@ using Microsoft.OpenApi.Models;
 using NDTCore.Identity.API.Configuration;
 using NDTCore.Identity.API.Filters;
 using NDTCore.Identity.API.HealthChecks;
-using NDTCore.Identity.API.Middleware;
+using NDTCore.Identity.API.Middleware.Extensions;
 using NDTCore.Identity.Application;
 using NDTCore.Identity.Contracts.Configuration;
 using NDTCore.Identity.Infrastructure;
@@ -34,6 +34,8 @@ try
 {
     Log.Information("Starting NDTCore Identity API");
 
+    builder.Services.AddMemoryCache();
+
     // Add services to the container
     builder.Services.AddApplicationServices();
     builder.Services.AddInfrastructureServices(builder.Configuration);
@@ -43,6 +45,8 @@ try
         ?? throw new InvalidOperationException("JWT settings not configured");
 
     builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection(JwtSettings.SectionName));
+    builder.Services.Configure<TokenValidationSettings>(builder.Configuration.GetSection(TokenValidationSettings.SectionName));
+    builder.Services.Configure<SeedSettings>(builder.Configuration.GetSection(SeedSettings.SectionName));
 
     builder.Services.AddAuthentication(options =>
     {
@@ -82,7 +86,7 @@ try
     });
 
     // Authorization Policies (RBAC)
-    builder.Services.AddAuthorizationPolicies();
+    builder.Services.AddAuthorizationPolicies(builder.Configuration);
 
     // Rate Limiting
     builder.Services.AddRateLimiter(options =>
@@ -193,6 +197,9 @@ try
 
     var app = builder.Build();
 
+    // Seed static permissions into database
+    await app.Services.InitializeIdentityDatabaseAsync();
+
     // Configure the HTTP request pipeline
     if (app.Environment.IsDevelopment())
     {
@@ -205,7 +212,7 @@ try
     }
 
     // Middleware pipeline
-    app.UseExceptionHandling();
+    app.UseGlobalExceptionHandling();
     app.UseRequestLogging();
 
     app.UseHttpsRedirection();

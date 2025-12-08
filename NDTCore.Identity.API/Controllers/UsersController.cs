@@ -2,10 +2,10 @@
 using Microsoft.AspNetCore.Mvc;
 using NDTCore.Identity.API.Controllers.Base;
 using NDTCore.Identity.Contracts.Common;
+using NDTCore.Identity.Contracts.Extensions;
 using NDTCore.Identity.Contracts.Features.Users.DTOs;
 using NDTCore.Identity.Contracts.Features.Users.Requests;
 using NDTCore.Identity.Contracts.Interfaces.Services;
-using System.Security.Claims;
 
 namespace NDTCore.Identity.API.Controllers;
 
@@ -17,14 +17,11 @@ namespace NDTCore.Identity.API.Controllers;
 public class UsersController : BaseApiController
 {
     private readonly IUserService _userService;
-    private readonly ILogger<UsersController> _logger;
 
     public UsersController(
-        IUserService userService,
-        ILogger<UsersController> logger)
+        IUserService userService)
     {
         _userService = userService;
-        _logger = logger;
     }
 
     /// <summary>
@@ -39,18 +36,18 @@ public class UsersController : BaseApiController
     [ProducesResponseType(typeof(ApiResponse<UserDto>), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> GetCurrentUser(CancellationToken cancellationToken = default)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-            ?? User.FindFirst("sub")?.Value;
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+            ?? User.FindFirst(NDTCore.Identity.Domain.Constants.ClaimTypes.Subject)?.Value;
 
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
-            return Unauthorized(ApiResponse<UserDto>.FailureResponse("Invalid user", 401));
+        {
+            var errorResult = ApiResponse<UserDto>.Unauthorized("Invalid user");
+            return StatusCode(errorResult.StatusCode, errorResult);
+        }
 
-        var response = await _userService.GetUserByIdAsync(userId, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _userService.GetUserByIdAsync(userId, cancellationToken);
+        var response = ApiResponse<UserDto>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -61,17 +58,14 @@ public class UsersController : BaseApiController
     /// <returns>Paginated list of users</returns>
     [HttpGet]
     [Authorize(Policy = "AdminOnly")]
-    [ProducesResponseType(typeof(ApiResponse<PagedResult<UserDto>>), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(PagedApiResponse<UserDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUsers(
         [FromQuery] GetUsersRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _userService.GetUsersAsync(request, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _userService.GetUsersAsync(request, cancellationToken);
+        var response = result.ToPagedApiResponse();
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -88,12 +82,9 @@ public class UsersController : BaseApiController
         [FromRoute] Guid id,
         CancellationToken cancellationToken = default)
     {
-        var response = await _userService.GetUserByIdAsync(id, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _userService.GetUserByIdAsync(id, cancellationToken);
+        var response = ApiResponse<UserDto>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -110,11 +101,8 @@ public class UsersController : BaseApiController
         [FromBody] CreateUserRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _userService.CreateUserAsync(request, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
+        var result = await _userService.CreateUserAsync(request, cancellationToken);
+        var response = ApiResponse<UserDto>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
 
@@ -133,18 +121,18 @@ public class UsersController : BaseApiController
         [FromBody] UpdateUserRequest request,
         CancellationToken cancellationToken = default)
     {
-        var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value 
-            ?? User.FindFirst("sub")?.Value;
+        var userIdClaim = User.FindFirst(System.Security.Claims.ClaimTypes.NameIdentifier)?.Value 
+            ?? User.FindFirst(NDTCore.Identity.Domain.Constants.ClaimTypes.Subject)?.Value;
 
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
-            return Unauthorized(ApiResponse<UserDto>.FailureResponse("Invalid user", 401));
+        {
+            var errorResult = ApiResponse<UserDto>.Unauthorized("Invalid user");
+            return StatusCode(errorResult.StatusCode, errorResult);
+        }
 
-        var response = await _userService.UpdateUserAsync(userId, request, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _userService.UpdateUserAsync(userId, request, cancellationToken);
+        var response = ApiResponse<UserDto>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -164,12 +152,9 @@ public class UsersController : BaseApiController
         [FromBody] UpdateUserRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _userService.UpdateUserAsync(id, request, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _userService.UpdateUserAsync(id, request, cancellationToken);
+        var response = ApiResponse<UserDto>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -187,11 +172,8 @@ public class UsersController : BaseApiController
         [FromRoute] Guid id,
         CancellationToken cancellationToken = default)
     {
-        var response = await _userService.DeleteUserAsync(id, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _userService.DeleteUserAsync(id, cancellationToken);
+        var response = ApiResponse.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 }

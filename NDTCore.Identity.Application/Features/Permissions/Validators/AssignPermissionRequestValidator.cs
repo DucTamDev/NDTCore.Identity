@@ -1,5 +1,5 @@
 using FluentValidation;
-using NDTCore.Identity.Contracts.Authorization;
+using NDTCore.Identity.Contracts.Authorization.Permissions;
 using NDTCore.Identity.Contracts.Features.Permissions.Requests;
 
 namespace NDTCore.Identity.Application.Features.Permissions.Validators;
@@ -9,22 +9,35 @@ namespace NDTCore.Identity.Application.Features.Permissions.Validators;
 /// </summary>
 public class AssignPermissionRequestValidator : AbstractValidator<AssignPermissionRequest>
 {
-    public AssignPermissionRequestValidator()
+    private readonly IPermissionRegistry _permissionRegistry;
+
+    public AssignPermissionRequestValidator(IPermissionRegistry permissionRegistry)
     {
+        _permissionRegistry = permissionRegistry;
+
         RuleFor(x => x.RoleId)
-            .NotEmpty().WithMessage("Role ID is required");
+          .NotEmpty()
+          .WithMessage("Role ID is required.");
 
         RuleFor(x => x.Permissions)
-            .NotEmpty().WithMessage("At least one permission is required")
-            .Must(p => p != null && p.Count > 0).WithMessage("At least one permission must be specified");
+            .NotEmpty()
+            .WithMessage("At least one permission is required.")
+            .Must(NoDuplicates)
+            .WithMessage("Duplicate permissions are not allowed.");
 
         RuleForEach(x => x.Permissions)
-            .Must(BeValidPermission).WithMessage("Invalid permission: {PropertyValue}");
+            .NotEmpty().WithMessage("Permission cannot be empty.")
+            .Must(BeValidPermission)
+            .WithMessage("Permission '{PropertyValue}' is not recognized.");
     }
 
     private bool BeValidPermission(string permission)
     {
-        return NDTCore.Identity.Contracts.Authorization.Permissions.IsValidPermission(permission);
+        return _permissionRegistry.IsValidPermission(permission);
+    }
+
+    private static bool NoDuplicates(IList<string> permissions)
+    {
+        return permissions.Count == permissions.Distinct().Count();
     }
 }
-

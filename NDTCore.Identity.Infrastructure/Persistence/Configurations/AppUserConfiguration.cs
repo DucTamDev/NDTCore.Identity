@@ -32,6 +32,22 @@ namespace NDTCore.Identity.Infrastructure.Persistence.Configurations
             // Indexes (inherited from IdentityUser)
             builder.HasIndex(u => u.NormalizedEmail).HasDatabaseName("EmailIndex");
             builder.HasIndex(u => u.NormalizedUserName).HasDatabaseName("UserNameIndex").IsUnique();
+
+            // Additional useful indexes
+            builder.HasIndex(u => u.IsActive)
+                .HasDatabaseName("IX_Users_IsActive");
+
+            builder.HasIndex(u => u.IsDeleted)
+                .HasDatabaseName("IX_Users_IsDeleted");
+
+            builder.HasIndex(u => new { u.Email, u.IsDeleted })
+                .HasDatabaseName("IX_Users_Email_IsDeleted");
+
+            builder.HasIndex(u => u.LastLoginAt)
+                .HasDatabaseName("IX_Users_LastLoginAt");
+
+            builder.HasIndex(u => u.CreatedAt)
+                .HasDatabaseName("IX_Users_CreatedAt");
         }
     }
 }

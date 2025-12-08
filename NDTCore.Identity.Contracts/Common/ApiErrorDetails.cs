@@ -6,6 +6,6 @@
 public class ApiErrorDetails
 {
     public string Message { get; init; } = string.Empty;
-    public Dictionary<string, string[]>? ValidationErrors { get; init; }
+    public Dictionary<string, List<string>>? ValidationErrors { get; init; }
     public string? StackTrace { get; init; }
 }

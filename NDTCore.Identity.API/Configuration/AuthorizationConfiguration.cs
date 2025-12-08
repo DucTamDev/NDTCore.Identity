@@ -1,162 +1,42 @@
 using Microsoft.AspNetCore.Authorization;
-using NDTCore.Identity.Contracts.Authorization;
+using Microsoft.Extensions.Options;
+using NDTCore.Identity.Application.Features.Authorization.Handlers;
+using NDTCore.Identity.Contracts.Authorization.Permissions;
+using NDTCore.Identity.Contracts.Authorization.Policies;
+using NDTCore.Identity.Contracts.Configuration.Authorization;
 
 namespace NDTCore.Identity.API.Configuration;
 
 /// <summary>
-/// Authorization configuration and policy setup
+/// Extension methods for configuring authorization services
 /// </summary>
 public static class AuthorizationConfiguration
 {
     /// <summary>
-    /// Adds authorization policies to the service collection
+    /// Adds authorization policies and handlers to the service collection
     /// </summary>
-    public static IServiceCollection AddAuthorizationPolicies(this IServiceCollection services)
+    public static IServiceCollection AddAuthorizationPolicies(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddAuthorization(options =>
-        {
-            // User Management Policies
-            options.AddPolicy("Users.View", policy =>
-                policy.RequireClaim("Permission", Permissions.Users.View));
-            
-            options.AddPolicy("Users.Create", policy =>
-                policy.RequireClaim("Permission", Permissions.Users.Create));
-            
-            options.AddPolicy("Users.Edit", policy =>
-                policy.RequireClaim("Permission", Permissions.Users.Edit));
-            
-            options.AddPolicy("Users.Delete", policy =>
-                policy.RequireClaim("Permission", Permissions.Users.Delete));
+        // Register permission registry as singleton
+        services.AddSingleton<IPermissionRegistry, PermissionRegistry>();
 
-            options.AddPolicy("Users.Lock", policy =>
-                policy.RequireClaim("Permission", Permissions.Users.Lock));
+        // Register policy builder
+        services.AddSingleton<IPolicyBuilder, PolicyBuilder>();
 
-            options.AddPolicy("Users.Unlock", policy =>
-                policy.RequireClaim("Permission", Permissions.Users.Unlock));
+        // Register authorization handlers
+        services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        services.AddScoped<IAuthorizationHandler, HasAnyPermissionHandler>();
+        services.AddScoped<IAuthorizationHandler, HasAllPermissionsHandler>();
 
-            options.AddPolicy("Users.ResetPassword", policy =>
-                policy.RequireClaim("Permission", Permissions.Users.ResetPassword));
+        // Bind permission configuration from appsettings
+        services.Configure<PermissionOptions>(configuration.GetSection("Authorization:Permissions"));
 
-            options.AddPolicy("Users.ViewSensitiveData", policy =>
-                policy.RequireClaim("Permission", Permissions.Users.ViewSensitiveData));
+        // Add authorization without configuring policies yet
+        services.AddAuthorization();
 
-            // Role Management Policies
-            options.AddPolicy("Roles.View", policy =>
-                policy.RequireClaim("Permission", Permissions.Roles.View));
-            
-            options.AddPolicy("Roles.Create", policy =>
-                policy.RequireClaim("Permission", Permissions.Roles.Create));
-            
-            options.AddPolicy("Roles.Edit", policy =>
-                policy.RequireClaim("Permission", Permissions.Roles.Edit));
-            
-            options.AddPolicy("Roles.Delete", policy =>
-                policy.RequireClaim("Permission", Permissions.Roles.Delete));
-
-            options.AddPolicy("Roles.AssignToUser", policy =>
-                policy.RequireClaim("Permission", Permissions.Roles.AssignToUser));
-
-            options.AddPolicy("Roles.RemoveFromUser", policy =>
-                policy.RequireClaim("Permission", Permissions.Roles.RemoveFromUser));
-
-            // Role Claims Policies
-            options.AddPolicy("RoleClaims.View", policy =>
-                policy.RequireClaim("Permission", Permissions.RoleClaims.View));
-            
-            options.AddPolicy("RoleClaims.Create", policy =>
-                policy.RequireClaim("Permission", Permissions.RoleClaims.Create));
-            
-            options.AddPolicy("RoleClaims.Delete", policy =>
-                policy.RequireClaim("Permission", Permissions.RoleClaims.Delete));
-
-            // System Administration Policies
-            options.AddPolicy("SystemAdministration.ViewAuditLogs", policy =>
-                policy.RequireClaim("Permission", Permissions.SystemAdministration.ViewAuditLogs));
-
-            options.AddPolicy("SystemAdministration.ManageSystemSettings", policy =>
-                policy.RequireClaim("Permission", Permissions.SystemAdministration.ManageSystemSettings));
-
-            options.AddPolicy("SystemAdministration.ViewHealthChecks", policy =>
-                policy.RequireClaim("Permission", Permissions.SystemAdministration.ViewHealthChecks));
-
-            // Composite Policies (for convenience)
-            // AdminOnly: Requires any admin permission
-            options.AddPolicy("AdminOnly", policy =>
-                policy.RequireAssertion(context =>
-                    context.User.HasClaim(c => c.Type == "Permission" && (
-                        c.Value == Permissions.Users.View ||
-                        c.Value == Permissions.Users.Create ||
-                        c.Value == Permissions.Users.Edit ||
-                        c.Value == Permissions.Users.Delete ||
-                        c.Value == Permissions.Roles.View ||
-                        c.Value == Permissions.Roles.Create ||
-                        c.Value == Permissions.Roles.Edit ||
-                        c.Value == Permissions.Roles.Delete ||
-                        c.Value == Permissions.SystemAdministration.ViewAuditLogs ||
-                        c.Value == Permissions.SystemAdministration.ManageSystemSettings
-                    ))));
-
-            // UserManagement: Requires any user management permission
-            options.AddPolicy("UserManagement", policy =>
-                policy.RequireAssertion(context =>
-                    context.User.HasClaim(c => c.Type == "Permission" && (
-                        c.Value == Permissions.Users.View ||
-                        c.Value == Permissions.Users.Create ||
-                        c.Value == Permissions.Users.Edit ||
-                        c.Value == Permissions.Users.Delete ||
-                        c.Value == Permissions.Users.Lock ||
-                        c.Value == Permissions.Users.Unlock ||
-                        c.Value == Permissions.Users.ResetPassword
-                    ))));
-
-            // RoleManagement: Requires any role management permission
-            options.AddPolicy("RoleManagement", policy =>
-                policy.RequireAssertion(context =>
-                    context.User.HasClaim(c => c.Type == "Permission" && (
-                        c.Value == Permissions.Roles.View ||
-                        c.Value == Permissions.Roles.Create ||
-                        c.Value == Permissions.Roles.Edit ||
-                        c.Value == Permissions.Roles.Delete ||
-                        c.Value == Permissions.Roles.AssignToUser ||
-                        c.Value == Permissions.Roles.RemoveFromUser
-                    ))));
-        });
-
-        // Register permission-based authorization handler
-        services.AddSingleton<IAuthorizationHandler, PermissionAuthorizationHandler>();
+        // Add our configurator
+        services.AddTransient<IConfigureOptions<AuthorizationOptions>, PermissionPolicyConfigurator>();
 
         return services;
     }
 }
-
-/// <summary>
-/// Authorization handler for permission-based access control
-/// </summary>
-public class PermissionAuthorizationHandler : AuthorizationHandler<PermissionRequirement>
-{
-    protected override Task HandleRequirementAsync(
-        AuthorizationHandlerContext context,
-        PermissionRequirement requirement)
-    {
-        if (context.User.HasClaim(c => c.Type == "Permission" && c.Value == requirement.Permission))
-        {
-            context.Succeed(requirement);
-        }
-
-        return Task.CompletedTask;
-    }
-}
-
-/// <summary>
-/// Permission requirement for authorization
-/// </summary>
-public class PermissionRequirement : IAuthorizationRequirement
-{
-    public string Permission { get; }
-
-    public PermissionRequirement(string permission)
-    {
-        Permission = permission;
-    }
-}
-

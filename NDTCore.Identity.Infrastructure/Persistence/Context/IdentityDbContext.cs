@@ -33,6 +33,16 @@ public class IdentityDbContext : IdentityDbContext<
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
 
     /// <summary>
+    /// Application permissions
+    /// </summary>
+    public DbSet<Permission> Permissions => Set<Permission>();
+
+    /// <summary>
+    /// Role-permission assignments
+    /// </summary>
+    public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
+
+    /// <summary>
     /// Configures the model for the database context
     /// </summary>
     /// <param name="builder">The model builder</param>
@@ -47,8 +57,11 @@ public class IdentityDbContext : IdentityDbContext<
         builder.ApplyConfiguration(new AppUserClaimConfiguration());
         builder.ApplyConfiguration(new AppUserLoginConfiguration());
         builder.ApplyConfiguration(new AppUserTokenConfiguration());
+        builder.ApplyConfiguration(new AppUserRefreshTokenConfiguration());
         builder.ApplyConfiguration(new AppRoleClaimConfiguration());
         builder.ApplyConfiguration(new AuditLogConfiguration());
+        builder.ApplyConfiguration(new PermissionConfiguration());
+        builder.ApplyConfiguration(new RolePermissionConfiguration());
     }
 }
 

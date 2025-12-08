@@ -1,9 +1,21 @@
-﻿namespace NDTCore.Identity.Domain.Exceptions;
+﻿using NDTCore.Identity.Domain.Constants;
 
-public class DomainException : Exception
+namespace NDTCore.Identity.Domain.Exceptions;
+
+/// <summary>
+/// General domain exception for business rule violations
+/// </summary>
+public class DomainException : BaseDomainException
 {
-    public DomainException(string message) : base(message) { }
+    public DomainException(string message)
+        : base(ErrorCodes.BusinessRuleViolation, message) { }
 
     public DomainException(string message, Exception innerException)
-        : base(message, innerException) { }
+        : base(ErrorCodes.BusinessRuleViolation, message, innerException) { }
+
+    public DomainException(string message, string userMessage)
+        : base(ErrorCodes.BusinessRuleViolation, message, userMessage) { }
+
+    public DomainException(string message, string userMessage, Exception innerException)
+        : base(ErrorCodes.BusinessRuleViolation, message, userMessage, innerException) { }
 }

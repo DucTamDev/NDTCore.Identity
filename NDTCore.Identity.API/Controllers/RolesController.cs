@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NDTCore.Identity.API.Controllers.Base;
 using NDTCore.Identity.Contracts.Common;
-using NDTCore.Identity.Contracts.Common;
 using NDTCore.Identity.Contracts.Features.Roles.DTOs;
 using NDTCore.Identity.Contracts.Features.Roles.Requests;
 using NDTCore.Identity.Contracts.Interfaces.Services;
@@ -18,14 +17,11 @@ namespace NDTCore.Identity.API.Controllers;
 public class RolesController : BaseApiController
 {
     private readonly IRoleService _roleService;
-    private readonly ILogger<RolesController> _logger;
 
     public RolesController(
-        IRoleService roleService,
-        ILogger<RolesController> logger)
+        IRoleService roleService)
     {
         _roleService = roleService;
-        _logger = logger;
     }
 
     /// <summary>
@@ -37,12 +33,9 @@ public class RolesController : BaseApiController
     [ProducesResponseType(typeof(ApiResponse<List<RoleDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllRoles(CancellationToken cancellationToken = default)
     {
-        var response = await _roleService.GetAllRolesAsync(cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _roleService.GetAllRolesAsync(cancellationToken);
+        var response = ApiResponse<List<RoleDto>>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -58,12 +51,9 @@ public class RolesController : BaseApiController
         [FromRoute] Guid id,
         CancellationToken cancellationToken = default)
     {
-        var response = await _roleService.GetRoleByIdAsync(id, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _roleService.GetRoleByIdAsync(id, cancellationToken);
+        var response = ApiResponse<RoleDto>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -79,11 +69,8 @@ public class RolesController : BaseApiController
         [FromBody] CreateRoleRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _roleService.CreateRoleAsync(request, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
+        var result = await _roleService.CreateRoleAsync(request, cancellationToken);
+        var response = ApiResponse<RoleDto>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
 
@@ -104,12 +91,9 @@ public class RolesController : BaseApiController
         [FromBody] UpdateRoleRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _roleService.UpdateRoleAsync(id, request, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _roleService.UpdateRoleAsync(id, request, cancellationToken);
+        var response = ApiResponse<RoleDto>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -127,12 +111,9 @@ public class RolesController : BaseApiController
         [FromRoute] Guid id,
         CancellationToken cancellationToken = default)
     {
-        var response = await _roleService.DeleteRoleAsync(id, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _roleService.DeleteRoleAsync(id, cancellationToken);
+        var response = ApiResponse.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -149,12 +130,9 @@ public class RolesController : BaseApiController
         [FromBody] AssignRoleRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _roleService.AssignRoleToUserAsync(request, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _roleService.AssignRoleToUserAsync(request, cancellationToken);
+        var response = ApiResponse.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -173,12 +151,9 @@ public class RolesController : BaseApiController
         [FromRoute] Guid roleId,
         CancellationToken cancellationToken = default)
     {
-        var response = await _roleService.RemoveRoleFromUserAsync(userId, roleId, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _roleService.RemoveRoleFromUserAsync(userId, roleId, cancellationToken);
+        var response = ApiResponse.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 }
 

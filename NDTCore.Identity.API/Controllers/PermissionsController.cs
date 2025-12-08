@@ -17,14 +17,11 @@ namespace NDTCore.Identity.API.Controllers;
 public class PermissionsController : BaseApiController
 {
     private readonly IPermissionService _permissionService;
-    private readonly ILogger<PermissionsController> _logger;
 
     public PermissionsController(
-        IPermissionService permissionService,
-        ILogger<PermissionsController> logger)
+        IPermissionService permissionService)
     {
         _permissionService = permissionService;
-        _logger = logger;
     }
 
     /// <summary>
@@ -36,8 +33,9 @@ public class PermissionsController : BaseApiController
     [ProducesResponseType(typeof(ApiResponse<List<PermissionDto>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetAllPermissions(CancellationToken cancellationToken = default)
     {
-        var response = await _permissionService.GetAllPermissionsAsync(cancellationToken);
-        return Ok(response);
+        var result = await _permissionService.GetAllPermissionsAsync(cancellationToken);
+        var response = ApiResponse<List<PermissionDto>>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -49,8 +47,9 @@ public class PermissionsController : BaseApiController
     [ProducesResponseType(typeof(ApiResponse<Dictionary<string, List<PermissionDto>>>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetGroupedPermissions(CancellationToken cancellationToken = default)
     {
-        var response = await _permissionService.GetGroupedPermissionsAsync(cancellationToken);
-        return Ok(response);
+        var result = await _permissionService.GetGroupedPermissionsAsync(cancellationToken);
+        var response = ApiResponse<Dictionary<string, List<PermissionDto>>>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -66,12 +65,9 @@ public class PermissionsController : BaseApiController
         [FromRoute] Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var response = await _permissionService.GetUserPermissionsAsync(userId, cancellationToken);
-
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _permissionService.GetUserPermissionsAsync(userId, cancellationToken);
+        var response = ApiResponse<UserPermissionsDto>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -87,12 +83,9 @@ public class PermissionsController : BaseApiController
         [FromRoute] Guid roleId,
         CancellationToken cancellationToken = default)
     {
-        var response = await _permissionService.GetRolePermissionsAsync(roleId, cancellationToken);
-
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _permissionService.GetRolePermissionsAsync(roleId, cancellationToken);
+        var response = ApiResponse<List<string>>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -109,12 +102,9 @@ public class PermissionsController : BaseApiController
         [FromBody] AssignPermissionRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _permissionService.AssignPermissionsToRoleAsync(request, cancellationToken);
-
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _permissionService.AssignPermissionsToRoleAsync(request, cancellationToken);
+        var response = ApiResponse.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -134,14 +124,14 @@ public class PermissionsController : BaseApiController
         CancellationToken cancellationToken = default)
     {
         if (permissions == null || !permissions.Any())
-            return BadRequest(ApiResponse.FailureResponse("At least one permission must be specified", 400));
+        {
+            var errorResult = ApiResponse.BadRequest("At least one permission must be specified");
+            return StatusCode(errorResult.StatusCode, errorResult);
+        }
 
-        var response = await _permissionService.RevokePermissionsFromRoleAsync(roleId, permissions, cancellationToken);
-
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _permissionService.RevokePermissionsFromRoleAsync(roleId, permissions, cancellationToken);
+        var response = ApiResponse.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 }
 

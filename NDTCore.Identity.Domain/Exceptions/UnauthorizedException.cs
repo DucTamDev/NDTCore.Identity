@@ -1,7 +1,15 @@
-﻿namespace NDTCore.Identity.Domain.Exceptions;
+﻿using NDTCore.Identity.Domain.Constants;
 
-public class UnauthorizedException : DomainException
+namespace NDTCore.Identity.Domain.Exceptions;
+
+/// <summary>
+/// Exception thrown when authentication is required or fails
+/// </summary>
+public class UnauthorizedException : BaseDomainException
 {
     public UnauthorizedException(string message = "Unauthorized access.")
-        : base(message) { }
+        : base(ErrorCodes.Unauthorized, message, "You are not authorized to perform this action.") { }
+
+    public UnauthorizedException(string message, string userMessage)
+        : base(ErrorCodes.Unauthorized, message, userMessage) { }
 }

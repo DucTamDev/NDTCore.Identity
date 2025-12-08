@@ -11,9 +11,9 @@ public class PermissionDto
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Permission category (e.g., "Users", "Roles")
+    /// Permission module (e.g., "Users", "Roles")
     /// </summary>
-    public string Category { get; set; } = string.Empty;
+    public string Module { get; set; } = string.Empty;
 
     /// <summary>
     /// Permission description

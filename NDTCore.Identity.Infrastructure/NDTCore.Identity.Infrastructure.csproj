@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <Folder Include="Persistence\Migrations\" />
+    <Folder Include="Persistence\Migrations\AspNetIdentityDb\" />
+    <Folder Include="Persistence\Seed\" />
   </ItemGroup>
 
   <ItemGroup>

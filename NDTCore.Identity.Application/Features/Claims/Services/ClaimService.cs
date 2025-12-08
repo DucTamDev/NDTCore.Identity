@@ -1,11 +1,13 @@
-using AutoMapper;
 using Microsoft.AspNetCore.Identity;
-using NDTCore.Identity.Contracts.Common;
+using Microsoft.Extensions.Logging;
+using NDTCore.Identity.Contracts.Common.Results;
 using NDTCore.Identity.Contracts.Features.Claims.DTOs;
 using NDTCore.Identity.Contracts.Features.Claims.Requests;
 using NDTCore.Identity.Contracts.Interfaces.Repositories;
 using NDTCore.Identity.Contracts.Interfaces.Services;
+using NDTCore.Identity.Domain.Constants;
 using NDTCore.Identity.Domain.Entities;
+using NDTCore.Identity.Domain.Exceptions;
 
 namespace NDTCore.Identity.Application.Features.Claims.Services;
 
@@ -20,7 +22,7 @@ public class ClaimService : IClaimService
     private readonly IRoleRepository _roleRepository;
     private readonly UserManager<AppUser> _userManager;
     private readonly RoleManager<AppRole> _roleManager;
-    private readonly IMapper _mapper;
+    private readonly ILogger<ClaimService> _logger;
 
     public ClaimService(
         IUserClaimRepository userClaimRepository,
@@ -29,7 +31,7 @@ public class ClaimService : IClaimService
         IRoleRepository roleRepository,
         UserManager<AppUser> userManager,
         RoleManager<AppRole> roleManager,
-        IMapper mapper)
+        ILogger<ClaimService> logger)
     {
         _userClaimRepository = userClaimRepository;
         _roleClaimRepository = roleClaimRepository;
@@ -37,261 +39,431 @@ public class ClaimService : IClaimService
         _roleRepository = roleRepository;
         _roleManager = roleManager;
         _userManager = userManager;
-        _mapper = mapper;
+        _logger = logger;
     }
 
     // User Claims
-    public async Task<ApiResponse<List<UserClaimDto>>> GetUserClaimsAsync(Guid userId, CancellationToken cancellationToken = default)
+    public async Task<Result<List<UserClaimDto>>> GetUserClaimsAsync(Guid userId, CancellationToken cancellationToken = default)
     {
-        var userResult = await _userRepository.GetByIdAsync(userId, cancellationToken);
-        if (userResult.IsFailure)
-            return ApiResponse<List<UserClaimDto>>.FailureResponse("User not found", 404);
+        try
+        {
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+                return Result<List<UserClaimDto>>.NotFound($"User with ID '{userId}' was not found");
 
-        var claimsResult = await _userClaimRepository.GetClaimsByUserIdAsync(userId, cancellationToken);
-        if (claimsResult.IsFailure)
-            return ApiResponse<List<UserClaimDto>>.FailureResponse("Failed to retrieve user claims", 500);
-
-        var claims = claimsResult.Value!;
-        var dtos = claims.Select(MapToUserClaimDto).ToList();
-        return ApiResponse<List<UserClaimDto>>.SuccessResponse(dtos);
+            var claims = await _userClaimRepository.GetClaimsByUserIdAsync(userId, cancellationToken);
+            var dtos = claims.Select(MapToUserClaimDto).ToList();
+            return Result<List<UserClaimDto>>.Success(dtos, "User claims retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user claims: {UserId}", userId);
+            return Result<List<UserClaimDto>>.InternalError("An error occurred while retrieving user claims");
+        }
     }
 
-    public async Task<ApiResponse<UserClaimDto>> GetUserClaimByIdAsync(int claimId, CancellationToken cancellationToken = default)
+    public async Task<Result<UserClaimDto>> GetUserClaimByIdAsync(int claimId, CancellationToken cancellationToken = default)
     {
-        var claimResult = await _userClaimRepository.GetByIdAsync(claimId, cancellationToken);
-        if (claimResult.IsFailure)
-            return ApiResponse<UserClaimDto>.FailureResponse("Claim not found", 404);
+        try
+        {
+            var claim = await _userClaimRepository.GetByIdAsync(claimId, cancellationToken);
+            if (claim == null)
+                return Result<UserClaimDto>.NotFound($"User claim with ID '{claimId}' was not found");
 
-        var dto = MapToUserClaimDto(claimResult.Value!);
-        return ApiResponse<UserClaimDto>.SuccessResponse(dto);
+            var dto = MapToUserClaimDto(claim);
+            return Result<UserClaimDto>.Success(dto, "User claim retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting user claim: {ClaimId}", claimId);
+            return Result<UserClaimDto>.InternalError("An error occurred while retrieving the user claim");
+        }
     }
 
-    public async Task<ApiResponse<UserClaimDto>> AddUserClaimAsync(Guid userId, CreateClaimRequest request, CancellationToken cancellationToken = default)
+    public async Task<Result<UserClaimDto>> AddUserClaimAsync(Guid userId, CreateClaimRequest request, CancellationToken cancellationToken = default)
     {
-        var userResult = await _userRepository.GetByIdAsync(userId, cancellationToken);
-        if (userResult.IsFailure)
-            return ApiResponse<UserClaimDto>.FailureResponse("User not found", 404);
-
-        var user = userResult.Value!;
-
-        // Use UserManager to add claim (for Identity framework consistency)
-        var claim = new System.Security.Claims.Claim(request.ClaimType, request.ClaimValue);
-        var addResult = await _userManager.AddClaimAsync(user, claim);
-        if (!addResult.Succeeded)
+        try
         {
-            var errors = addResult.Errors.Select(e => e.Description).ToList();
-            return ApiResponse<UserClaimDto>.FailureResponse("Failed to add claim", 400, errors);
+            var user = await _userRepository.GetByIdAsync(userId, cancellationToken);
+            if (user == null)
+                return Result<UserClaimDto>.NotFound($"User with ID '{userId}' was not found");
+
+            // Use UserManager to add claim (for Identity framework consistency)
+            var claim = new System.Security.Claims.Claim(request.ClaimType, request.ClaimValue);
+            var addResult = await _userManager.AddClaimAsync(user, claim);
+            if (!addResult.Succeeded)
+            {
+                var validationErrors = addResult.Errors
+                    .GroupBy(e => e.Code)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(e => e.Description).ToList());
+
+                return Result<UserClaimDto>.BadRequest(
+                    message: "One or more validation errors occurred",
+                    errorCode: ErrorCodes.ValidationError,
+                    validationErrors: validationErrors);
+            }
+
+            // Get the created claim
+            var createdClaim = await _userClaimRepository.GetUserClaimAsync(userId, request.ClaimType, request.ClaimValue, cancellationToken);
+            if (createdClaim != null)
+            {
+                var dto = MapToUserClaimDto(createdClaim);
+                return Result<UserClaimDto>.Created(dto, "Claim added successfully");
+            }
+
+            // Fallback DTO
+            var fallbackDto = new UserClaimDto
+            {
+                UserId = user.Id,
+                UserName = user.UserName ?? string.Empty,
+                ClaimType = request.ClaimType,
+                ClaimValue = request.ClaimValue
+            };
+
+            return Result<UserClaimDto>.Created(fallbackDto, "Claim added successfully");
         }
-
-        // Get the created claim
-        var claimResult = await _userClaimRepository.GetUserClaimAsync(userId, request.ClaimType, request.ClaimValue, cancellationToken);
-        if (claimResult.IsSuccess && claimResult.Value != null)
+        catch (ConflictException ex)
         {
-            var dto = MapToUserClaimDto(claimResult.Value);
-            return ApiResponse<UserClaimDto>.SuccessResponse(dto, "Claim added successfully", 201);
+            return Result<UserClaimDto>.Conflict(ex.Message);
         }
-
-        // Fallback DTO
-        var fallbackDto = new UserClaimDto
+        catch (DomainException ex)
         {
-            UserId = user.Id,
-            UserName = user.UserName ?? string.Empty,
-            ClaimType = request.ClaimType,
-            ClaimValue = request.ClaimValue
-        };
-
-        return ApiResponse<UserClaimDto>.SuccessResponse(fallbackDto, "Claim added successfully", 201);
+            return Result<UserClaimDto>.BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding user claim");
+            return Result<UserClaimDto>.InternalError("An error occurred while adding the claim");
+        }
     }
 
-    public async Task<ApiResponse<UserClaimDto>> UpdateUserClaimAsync(int claimId, UpdateClaimRequest request, CancellationToken cancellationToken = default)
+    public async Task<Result<UserClaimDto>> UpdateUserClaimAsync(int claimId, UpdateClaimRequest request, CancellationToken cancellationToken = default)
     {
-        var claimResult = await _userClaimRepository.GetByIdAsync(claimId, cancellationToken);
-        if (claimResult.IsFailure)
-            return ApiResponse<UserClaimDto>.FailureResponse("Claim not found", 404);
-
-        var oldClaim = claimResult.Value!;
-        var userResult = await _userRepository.GetByIdAsync(oldClaim.UserId, cancellationToken);
-        if (userResult.IsFailure)
-            return ApiResponse<UserClaimDto>.FailureResponse("User not found", 404);
-
-        var user = userResult.Value!;
-
-        // Remove old claim and add new claim
-        var oldClaimObj = new System.Security.Claims.Claim(oldClaim.ClaimType!, oldClaim.ClaimValue!);
-        var removeResult = await _userManager.RemoveClaimAsync(user, oldClaimObj);
-        if (!removeResult.Succeeded)
+        try
         {
-            var errors = removeResult.Errors.Select(e => e.Description).ToList();
-            return ApiResponse<UserClaimDto>.FailureResponse("Failed to update claim", 400, errors);
-        }
+            var oldClaim = await _userClaimRepository.GetByIdAsync(claimId, cancellationToken);
+            if (oldClaim == null)
+                return Result<UserClaimDto>.NotFound($"User claim with ID '{claimId}' was not found");
 
-        var newClaim = new System.Security.Claims.Claim(request.ClaimType, request.ClaimValue);
-        var addResult = await _userManager.AddClaimAsync(user, newClaim);
-        if (!addResult.Succeeded)
+            var user = await _userRepository.GetByIdAsync(oldClaim.UserId, cancellationToken);
+            if (user == null)
+                return Result<UserClaimDto>.NotFound($"User with ID '{oldClaim.UserId}' was not found");
+
+            // Remove old claim and add new claim
+            var oldClaimObj = new System.Security.Claims.Claim(oldClaim.ClaimType!, oldClaim.ClaimValue!);
+            var removeResult = await _userManager.RemoveClaimAsync(user, oldClaimObj);
+            if (!removeResult.Succeeded)
+            {
+                var validationErrors = removeResult.Errors
+                    .GroupBy(e => e.Code)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(e => e.Description).ToList());
+
+                return Result<UserClaimDto>.BadRequest(
+                    message: "One or more validation errors occurred",
+                    errorCode: ErrorCodes.ValidationError,
+                    validationErrors: validationErrors);
+            }
+
+            var newClaim = new System.Security.Claims.Claim(request.ClaimType, request.ClaimValue);
+            var addResult = await _userManager.AddClaimAsync(user, newClaim);
+            if (!addResult.Succeeded)
+            {
+                var validationErrors = addResult.Errors
+                    .GroupBy(e => e.Code)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(e => e.Description).ToList());
+
+                return Result<UserClaimDto>.BadRequest(
+                    message: "One or more validation errors occurred",
+                    errorCode: ErrorCodes.ValidationError,
+                    validationErrors: validationErrors);
+            }
+
+            // Get updated claim
+            var updatedClaim = await _userClaimRepository.GetUserClaimAsync(user.Id, request.ClaimType, request.ClaimValue, cancellationToken);
+            if (updatedClaim != null)
+            {
+                var dto = MapToUserClaimDto(updatedClaim);
+                return Result<UserClaimDto>.Success(dto, "Claim updated successfully");
+            }
+
+            return Result<UserClaimDto>.InternalError("Failed to retrieve updated claim");
+        }
+        catch (ConflictException ex)
         {
-            var errors = addResult.Errors.Select(e => e.Description).ToList();
-            return ApiResponse<UserClaimDto>.FailureResponse("Failed to update claim", 400, errors);
+            return Result<UserClaimDto>.Conflict(ex.Message);
         }
-
-        // Get updated claim
-        var updatedClaimResult = await _userClaimRepository.GetUserClaimAsync(user.Id, request.ClaimType, request.ClaimValue, cancellationToken);
-        if (updatedClaimResult.IsSuccess && updatedClaimResult.Value != null)
+        catch (DomainException ex)
         {
-            var dto = MapToUserClaimDto(updatedClaimResult.Value);
-            return ApiResponse<UserClaimDto>.SuccessResponse(dto, "Claim updated successfully");
+            return Result<UserClaimDto>.BadRequest(ex.Message);
         }
-
-        return ApiResponse<UserClaimDto>.FailureResponse("Failed to retrieve updated claim", 500);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating user claim: {ClaimId}", claimId);
+            return Result<UserClaimDto>.InternalError("An error occurred while updating the claim");
+        }
     }
 
-    public async Task<ApiResponse> RemoveUserClaimAsync(int claimId, CancellationToken cancellationToken = default)
+    public async Task<Result> RemoveUserClaimAsync(int claimId, CancellationToken cancellationToken = default)
     {
-        var claimResult = await _userClaimRepository.GetByIdAsync(claimId, cancellationToken);
-        if (claimResult.IsFailure)
-            return ApiResponse.FailureResponse("Claim not found", 404);
-
-        var claim = claimResult.Value!;
-        var userResult = await _userRepository.GetByIdAsync(claim.UserId, cancellationToken);
-        if (userResult.IsFailure)
-            return ApiResponse.FailureResponse("User not found", 404);
-
-        var user = userResult.Value!;
-        var claimObj = new System.Security.Claims.Claim(claim.ClaimType!, claim.ClaimValue!);
-        var removeResult = await _userManager.RemoveClaimAsync(user, claimObj);
-        if (!removeResult.Succeeded)
+        try
         {
-            var errors = removeResult.Errors.Select(e => e.Description).ToList();
-            return ApiResponse.FailureResponse("Failed to remove claim", 400, errors);
-        }
+            var claim = await _userClaimRepository.GetByIdAsync(claimId, cancellationToken);
+            if (claim == null)
+                return Result.NotFound($"User claim with ID '{claimId}' was not found");
 
-        return ApiResponse.SuccessResponse("Claim removed successfully");
+            var user = await _userRepository.GetByIdAsync(claim.UserId, cancellationToken);
+            if (user == null)
+                return Result.NotFound($"User with ID '{claim.UserId}' was not found");
+
+            var claimObj = new System.Security.Claims.Claim(claim.ClaimType!, claim.ClaimValue!);
+            var removeResult = await _userManager.RemoveClaimAsync(user, claimObj);
+            if (!removeResult.Succeeded)
+            {
+                var validationErrors = removeResult.Errors
+                    .GroupBy(e => e.Code)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(e => e.Description).ToList());
+
+                return Result.BadRequest(
+                    message: "One or more validation errors occurred",
+                    errorCode: ErrorCodes.ValidationError,
+                    validationErrors: validationErrors);
+            }
+
+            return Result.Success("Claim removed successfully");
+        }
+        catch (ConflictException ex)
+        {
+            return Result.Conflict(ex.Message);
+        }
+        catch (DomainException ex)
+        {
+            return Result.BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing user claim: {ClaimId}", claimId);
+            return Result.InternalError("An error occurred while removing the claim");
+        }
     }
 
     // Role Claims
-    public async Task<ApiResponse<List<RoleClaimDto>>> GetRoleClaimsAsync(Guid roleId, CancellationToken cancellationToken = default)
+    public async Task<Result<List<RoleClaimDto>>> GetRoleClaimsAsync(Guid roleId, CancellationToken cancellationToken = default)
     {
-        var roleResult = await _roleRepository.GetByIdAsync(roleId, cancellationToken);
-        if (roleResult.IsFailure)
-            return ApiResponse<List<RoleClaimDto>>.FailureResponse("Role not found", 404);
+        try
+        {
+            var role = await _roleRepository.GetByIdAsync(roleId, cancellationToken);
+            if (role == null)
+                return Result<List<RoleClaimDto>>.NotFound($"Role with ID '{roleId}' was not found");
 
-        var claimsResult = await _roleClaimRepository.GetClaimsByRoleIdAsync(roleId, cancellationToken);
-        if (claimsResult.IsFailure)
-            return ApiResponse<List<RoleClaimDto>>.FailureResponse("Failed to retrieve role claims", 500);
-
-        var claims = claimsResult.Value!;
-        var dtos = claims.Select(MapToRoleClaimDto).ToList();
-        return ApiResponse<List<RoleClaimDto>>.SuccessResponse(dtos);
+            var claims = await _roleClaimRepository.GetClaimsByRoleIdAsync(roleId, cancellationToken);
+            var dtos = claims.Select(MapToRoleClaimDto).ToList();
+            return Result<List<RoleClaimDto>>.Success(dtos, "Role claims retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting role claims: {RoleId}", roleId);
+            return Result<List<RoleClaimDto>>.InternalError("An error occurred while retrieving role claims");
+        }
     }
 
-    public async Task<ApiResponse<RoleClaimDto>> GetRoleClaimByIdAsync(int claimId, CancellationToken cancellationToken = default)
+    public async Task<Result<RoleClaimDto>> GetRoleClaimByIdAsync(int claimId, CancellationToken cancellationToken = default)
     {
-        var claimResult = await _roleClaimRepository.GetByIdAsync(claimId, cancellationToken);
-        if (claimResult.IsFailure)
-            return ApiResponse<RoleClaimDto>.FailureResponse("Claim not found", 404);
+        try
+        {
+            var claim = await _roleClaimRepository.GetByIdAsync(claimId, cancellationToken);
+            if (claim == null)
+                return Result<RoleClaimDto>.NotFound($"Role claim with ID '{claimId}' was not found");
 
-        var dto = MapToRoleClaimDto(claimResult.Value!);
-        return ApiResponse<RoleClaimDto>.SuccessResponse(dto);
+            var dto = MapToRoleClaimDto(claim);
+            return Result<RoleClaimDto>.Success(dto, "Role claim retrieved successfully");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error getting role claim: {ClaimId}", claimId);
+            return Result<RoleClaimDto>.InternalError("An error occurred while retrieving the role claim");
+        }
     }
 
-    public async Task<ApiResponse<RoleClaimDto>> AddRoleClaimAsync(Guid roleId, CreateClaimRequest request, CancellationToken cancellationToken = default)
+    public async Task<Result<RoleClaimDto>> AddRoleClaimAsync(Guid roleId, CreateClaimRequest request, CancellationToken cancellationToken = default)
     {
-        var roleResult = await _roleRepository.GetByIdAsync(roleId, cancellationToken);
-        if (roleResult.IsFailure)
-            return ApiResponse<RoleClaimDto>.FailureResponse("Role not found", 404);
-
-        var role = roleResult.Value!;
-
-        // Use RoleManager to add claim
-        var claim = new System.Security.Claims.Claim(request.ClaimType, request.ClaimValue);
-        var addResult = await _roleManager.AddClaimAsync(role, claim);
-        if (!addResult.Succeeded)
+        try
         {
-            var errors = addResult.Errors.Select(e => e.Description).ToList();
-            return ApiResponse<RoleClaimDto>.FailureResponse("Failed to add claim", 400, errors);
+            var role = await _roleRepository.GetByIdAsync(roleId, cancellationToken);
+            if (role == null)
+                return Result<RoleClaimDto>.NotFound($"Role with ID '{roleId}' was not found");
+
+            // Use RoleManager to add claim
+            var claim = new System.Security.Claims.Claim(request.ClaimType, request.ClaimValue);
+            var addResult = await _roleManager.AddClaimAsync(role, claim);
+            if (!addResult.Succeeded)
+            {
+                var validationErrors = addResult.Errors
+                    .GroupBy(e => e.Code)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(e => e.Description).ToList());
+
+                return Result<RoleClaimDto>.BadRequest(
+                    message: "One or more validation errors occurred",
+                    errorCode: ErrorCodes.ValidationError,
+                    validationErrors: validationErrors);
+            }
+
+            // Get the created claim
+            var createdClaim = await _roleClaimRepository.GetRoleClaimAsync(roleId, request.ClaimType, request.ClaimValue, cancellationToken);
+            if (createdClaim != null)
+            {
+                var dto = MapToRoleClaimDto(createdClaim);
+                return Result<RoleClaimDto>.Created(dto, "Claim added successfully");
+            }
+
+            // Fallback DTO
+            var fallbackDto = new RoleClaimDto
+            {
+                RoleId = role.Id,
+                RoleName = role.Name ?? string.Empty,
+                ClaimType = request.ClaimType,
+                ClaimValue = request.ClaimValue
+            };
+
+            return Result<RoleClaimDto>.Created(fallbackDto, "Claim added successfully");
         }
-
-        // Get the created claim
-        var claimResult = await _roleClaimRepository.GetRoleClaimAsync(roleId, request.ClaimType, request.ClaimValue, cancellationToken);
-        if (claimResult.IsSuccess && claimResult.Value != null)
+        catch (ConflictException ex)
         {
-            var dto = MapToRoleClaimDto(claimResult.Value);
-            return ApiResponse<RoleClaimDto>.SuccessResponse(dto, "Claim added successfully", 201);
+            return Result<RoleClaimDto>.Conflict(ex.Message);
         }
-
-        // Fallback DTO
-        var fallbackDto = new RoleClaimDto
+        catch (DomainException ex)
         {
-            RoleId = role.Id,
-            RoleName = role.Name ?? string.Empty,
-            ClaimType = request.ClaimType,
-            ClaimValue = request.ClaimValue
-        };
-
-        return ApiResponse<RoleClaimDto>.SuccessResponse(fallbackDto, "Claim added successfully", 201);
+            return Result<RoleClaimDto>.BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error adding role claim");
+            return Result<RoleClaimDto>.InternalError("An error occurred while adding the claim");
+        }
     }
 
-    public async Task<ApiResponse<RoleClaimDto>> UpdateRoleClaimAsync(int claimId, UpdateClaimRequest request, CancellationToken cancellationToken = default)
+    public async Task<Result<RoleClaimDto>> UpdateRoleClaimAsync(int claimId, UpdateClaimRequest request, CancellationToken cancellationToken = default)
     {
-        var claimResult = await _roleClaimRepository.GetByIdAsync(claimId, cancellationToken);
-        if (claimResult.IsFailure)
-            return ApiResponse<RoleClaimDto>.FailureResponse("Claim not found", 404);
-
-        var oldClaim = claimResult.Value!;
-        var roleResult = await _roleRepository.GetByIdAsync(oldClaim.RoleId, cancellationToken);
-        if (roleResult.IsFailure)
-            return ApiResponse<RoleClaimDto>.FailureResponse("Role not found", 404);
-
-        var role = roleResult.Value!;
-
-        // Remove old claim and add new claim
-        var oldClaimObj = new System.Security.Claims.Claim(oldClaim.ClaimType!, oldClaim.ClaimValue!);
-        var removeResult = await _roleManager.RemoveClaimAsync(role, oldClaimObj);
-        if (!removeResult.Succeeded)
+        try
         {
-            var errors = removeResult.Errors.Select(e => e.Description).ToList();
-            return ApiResponse<RoleClaimDto>.FailureResponse("Failed to update claim", 400, errors);
-        }
+            var oldClaim = await _roleClaimRepository.GetByIdAsync(claimId, cancellationToken);
+            if (oldClaim == null)
+                return Result<RoleClaimDto>.NotFound($"Role claim with ID '{claimId}' was not found");
 
-        var newClaim = new System.Security.Claims.Claim(request.ClaimType, request.ClaimValue);
-        var addResult = await _roleManager.AddClaimAsync(role, newClaim);
-        if (!addResult.Succeeded)
+            var role = await _roleRepository.GetByIdAsync(oldClaim.RoleId, cancellationToken);
+            if (role == null)
+                return Result<RoleClaimDto>.NotFound($"Role with ID '{oldClaim.RoleId}' was not found");
+
+            // Remove old claim and add new claim
+            var oldClaimObj = new System.Security.Claims.Claim(oldClaim.ClaimType!, oldClaim.ClaimValue!);
+            var removeResult = await _roleManager.RemoveClaimAsync(role, oldClaimObj);
+            if (!removeResult.Succeeded)
+            {
+                var validationErrors = removeResult.Errors
+                    .GroupBy(e => e.Code)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(e => e.Description).ToList());
+
+                return Result<RoleClaimDto>.BadRequest(
+                    "One or more validation errors occurred",
+                    "VALIDATION_ERROR",
+                    validationErrors);
+            }
+
+            var newClaim = new System.Security.Claims.Claim(request.ClaimType, request.ClaimValue);
+            var addResult = await _roleManager.AddClaimAsync(role, newClaim);
+            if (!addResult.Succeeded)
+            {
+                var validationErrors = addResult.Errors
+                    .GroupBy(e => e.Code)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(e => e.Description).ToList());
+
+                return Result<RoleClaimDto>.BadRequest(
+                    message: "One or more validation errors occurred",
+                    errorCode: ErrorCodes.ValidationError,
+                    validationErrors: validationErrors);
+            }
+
+            // Get updated claim
+            var updatedClaim = await _roleClaimRepository.GetRoleClaimAsync(role.Id, request.ClaimType, request.ClaimValue, cancellationToken);
+            if (updatedClaim != null)
+            {
+                var dto = MapToRoleClaimDto(updatedClaim);
+                return Result<RoleClaimDto>.Success(dto, "Claim updated successfully");
+            }
+
+            return Result<RoleClaimDto>.InternalError("Failed to retrieve updated claim");
+        }
+        catch (ConflictException ex)
         {
-            var errors = addResult.Errors.Select(e => e.Description).ToList();
-            return ApiResponse<RoleClaimDto>.FailureResponse("Failed to update claim", 400, errors);
+            return Result<RoleClaimDto>.Conflict(ex.Message);
         }
-
-        // Get updated claim
-        var updatedClaimResult = await _roleClaimRepository.GetRoleClaimAsync(role.Id, request.ClaimType, request.ClaimValue, cancellationToken);
-        if (updatedClaimResult.IsSuccess && updatedClaimResult.Value != null)
+        catch (DomainException ex)
         {
-            var dto = MapToRoleClaimDto(updatedClaimResult.Value);
-            return ApiResponse<RoleClaimDto>.SuccessResponse(dto, "Claim updated successfully");
+            return Result<RoleClaimDto>.BadRequest(ex.Message);
         }
-
-        return ApiResponse<RoleClaimDto>.FailureResponse("Failed to retrieve updated claim", 500);
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error updating role claim: {ClaimId}", claimId);
+            return Result<RoleClaimDto>.InternalError("An error occurred while updating the claim");
+        }
     }
 
-    public async Task<ApiResponse> RemoveRoleClaimAsync(int claimId, CancellationToken cancellationToken = default)
+    public async Task<Result> RemoveRoleClaimAsync(int claimId, CancellationToken cancellationToken = default)
     {
-        var claimResult = await _roleClaimRepository.GetByIdAsync(claimId, cancellationToken);
-        if (claimResult.IsFailure)
-            return ApiResponse.FailureResponse("Claim not found", 404);
-
-        var claim = claimResult.Value!;
-        var roleResult = await _roleRepository.GetByIdAsync(claim.RoleId, cancellationToken);
-        if (roleResult.IsFailure)
-            return ApiResponse.FailureResponse("Role not found", 404);
-
-        var role = roleResult.Value!;
-        var claimObj = new System.Security.Claims.Claim(claim.ClaimType!, claim.ClaimValue!);
-        var removeResult = await _roleManager.RemoveClaimAsync(role, claimObj);
-        if (!removeResult.Succeeded)
+        try
         {
-            var errors = removeResult.Errors.Select(e => e.Description).ToList();
-            return ApiResponse.FailureResponse("Failed to remove claim", 400, errors);
-        }
+            var claim = await _roleClaimRepository.GetByIdAsync(claimId, cancellationToken);
+            if (claim == null)
+                return Result.NotFound($"Role claim with ID '{claimId}' was not found");
 
-        return ApiResponse.SuccessResponse("Claim removed successfully");
+            var role = await _roleRepository.GetByIdAsync(claim.RoleId, cancellationToken);
+            if (role == null)
+                return Result.NotFound($"Role with ID '{claim.RoleId}' was not found");
+
+            var claimObj = new System.Security.Claims.Claim(claim.ClaimType!, claim.ClaimValue!);
+            var removeResult = await _roleManager.RemoveClaimAsync(role, claimObj);
+            if (!removeResult.Succeeded)
+            {
+                var validationErrors = removeResult.Errors
+                    .GroupBy(e => e.Code)
+                    .ToDictionary(
+                        g => g.Key,
+                        g => g.Select(e => e.Description).ToList());
+
+                return Result.BadRequest(
+                    "One or more validation errors occurred",
+                    ErrorCodes.ValidationError,
+                    validationErrors);
+            }
+
+            return Result.Success("Claim removed successfully");
+        }
+        catch (ConflictException ex)
+        {
+            return Result.Conflict(ex.Message);
+        }
+        catch (DomainException ex)
+        {
+            return Result.BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error removing role claim: {ClaimId}", claimId);
+            return Result.InternalError("An error occurred while removing the claim");
+        }
     }
 
     private UserClaimDto MapToUserClaimDto(AppUserClaim claim)
@@ -318,4 +490,3 @@ public class ClaimService : IClaimService
         };
     }
 }
-

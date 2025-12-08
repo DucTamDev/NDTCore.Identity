@@ -17,14 +17,11 @@ namespace NDTCore.Identity.API.Controllers;
 public class ClaimsController : BaseApiController
 {
     private readonly IClaimService _claimService;
-    private readonly ILogger<ClaimsController> _logger;
 
     public ClaimsController(
-        IClaimService claimService,
-        ILogger<ClaimsController> logger)
+        IClaimService claimService)
     {
         _claimService = claimService;
-        _logger = logger;
     }
 
     // User Claims Endpoints
@@ -42,12 +39,9 @@ public class ClaimsController : BaseApiController
         [FromRoute] Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var response = await _claimService.GetUserClaimsAsync(userId, cancellationToken);
-
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _claimService.GetUserClaimsAsync(userId, cancellationToken);
+        var response = ApiResponse<List<UserClaimDto>>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -63,12 +57,9 @@ public class ClaimsController : BaseApiController
         [FromRoute] int claimId,
         CancellationToken cancellationToken = default)
     {
-        var response = await _claimService.GetUserClaimByIdAsync(claimId, cancellationToken);
-
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _claimService.GetUserClaimByIdAsync(claimId, cancellationToken);
+        var response = ApiResponse<UserClaimDto>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -87,11 +78,8 @@ public class ClaimsController : BaseApiController
         [FromBody] CreateClaimRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _claimService.AddUserClaimAsync(userId, request, cancellationToken);
-
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
+        var result = await _claimService.AddUserClaimAsync(userId, request, cancellationToken);
+        var response = ApiResponse<UserClaimDto>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
 
@@ -111,12 +99,9 @@ public class ClaimsController : BaseApiController
         [FromBody] UpdateClaimRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _claimService.UpdateUserClaimAsync(claimId, request, cancellationToken);
-
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _claimService.UpdateUserClaimAsync(claimId, request, cancellationToken);
+        var response = ApiResponse<UserClaimDto>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -133,12 +118,9 @@ public class ClaimsController : BaseApiController
         [FromRoute] int claimId,
         CancellationToken cancellationToken = default)
     {
-        var response = await _claimService.RemoveUserClaimAsync(claimId, cancellationToken);
-
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _claimService.RemoveUserClaimAsync(claimId, cancellationToken);
+        var response = ApiResponse.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     // Role Claims Endpoints
@@ -156,12 +138,9 @@ public class ClaimsController : BaseApiController
         [FromRoute] Guid roleId,
         CancellationToken cancellationToken = default)
     {
-        var response = await _claimService.GetRoleClaimsAsync(roleId, cancellationToken);
-
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _claimService.GetRoleClaimsAsync(roleId, cancellationToken);
+        var response = ApiResponse<List<RoleClaimDto>>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -177,12 +156,9 @@ public class ClaimsController : BaseApiController
         [FromRoute] int claimId,
         CancellationToken cancellationToken = default)
     {
-        var response = await _claimService.GetRoleClaimByIdAsync(claimId, cancellationToken);
-
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _claimService.GetRoleClaimByIdAsync(claimId, cancellationToken);
+        var response = ApiResponse<RoleClaimDto>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -201,11 +177,8 @@ public class ClaimsController : BaseApiController
         [FromBody] CreateClaimRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _claimService.AddRoleClaimAsync(roleId, request, cancellationToken);
-
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
+        var result = await _claimService.AddRoleClaimAsync(roleId, request, cancellationToken);
+        var response = ApiResponse<RoleClaimDto>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
 
@@ -225,12 +198,9 @@ public class ClaimsController : BaseApiController
         [FromBody] UpdateClaimRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _claimService.UpdateRoleClaimAsync(claimId, request, cancellationToken);
-
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _claimService.UpdateRoleClaimAsync(claimId, request, cancellationToken);
+        var response = ApiResponse<RoleClaimDto>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -247,12 +217,9 @@ public class ClaimsController : BaseApiController
         [FromRoute] int claimId,
         CancellationToken cancellationToken = default)
     {
-        var response = await _claimService.RemoveRoleClaimAsync(claimId, cancellationToken);
-
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _claimService.RemoveRoleClaimAsync(claimId, cancellationToken);
+        var response = ApiResponse.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 }
 

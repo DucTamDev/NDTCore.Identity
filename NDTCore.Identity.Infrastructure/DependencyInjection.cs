@@ -3,7 +3,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using NDTCore.Identity.Contracts.Interfaces.Repositories;
-using NDTCore.Identity.Contracts.Mappings;
 using NDTCore.Identity.Domain.Entities;
 using NDTCore.Identity.Infrastructure.Persistence.Context;
 using NDTCore.Identity.Infrastructure.Repositories;
@@ -29,7 +28,6 @@ public static class DependencyInjection
             .AddRepositories()
             .AddDatabase(configuration)
             .AddIdentityConfiguration()
-            .AddMappings()
             .AddMediatRConfiguration();
 
         return services;
@@ -50,6 +48,7 @@ public static class DependencyInjection
         services.AddScoped<IRoleClaimRepository, RoleClaimRepository>();
         services.AddScoped<IUserRoleRepository, UserRoleRepository>();
         services.AddScoped<IUserClaimRepository, UserClaimRepository>();
+        services.AddScoped<IPermissionRepository, PermissionRepository>();
 
         return services;
     }
@@ -106,15 +105,9 @@ public static class DependencyInjection
         options.User.RequireUniqueEmail = true;
     }
 
-    private static IServiceCollection AddMappings(this IServiceCollection services)
+    public static async Task InitializeIdentityDatabaseAsync(this IServiceProvider serviceProvider)
     {
-        var assemblies = new[]
-        {
-            typeof(MappingProfile).Assembly
-        };
-
-        services.AddAutoMapper(assemblies);
-        return services;
+        //await PermissionSeeder.SeedPermissionsAsync(serviceProvider);
     }
 
     private static IServiceCollection AddMediatRConfiguration(this IServiceCollection services)

@@ -5,7 +5,6 @@ using NDTCore.Identity.Contracts.Common;
 using NDTCore.Identity.Contracts.Features.Authentication.Requests;
 using NDTCore.Identity.Contracts.Features.Authentication.Responses;
 using NDTCore.Identity.Contracts.Interfaces.Services;
-using System.Security.Claims;
 
 namespace NDTCore.Identity.API.Controllers;
 
@@ -17,14 +16,11 @@ namespace NDTCore.Identity.API.Controllers;
 public class AuthenticationController : BaseApiController
 {
     private readonly IAuthService _authService;
-    private readonly ILogger<AuthenticationController> _logger;
 
     public AuthenticationController(
-        IAuthService authService,
-        ILogger<AuthenticationController> logger)
+        IAuthService authService)
     {
         _authService = authService;
-        _logger = logger;
     }
 
     /// <summary>
@@ -41,11 +37,8 @@ public class AuthenticationController : BaseApiController
         [FromBody] RegisterRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _authService.RegisterAsync(request, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
+        var result = await _authService.RegisterAsync(request, cancellationToken);
+        var response = ApiResponse<AuthenticationResponse>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
 
@@ -64,12 +57,9 @@ public class AuthenticationController : BaseApiController
         CancellationToken cancellationToken = default)
     {
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
-        var response = await _authService.LoginAsync(request, ipAddress, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _authService.LoginAsync(request, ipAddress, cancellationToken);
+        var response = ApiResponse<AuthenticationResponse>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -87,12 +77,9 @@ public class AuthenticationController : BaseApiController
         CancellationToken cancellationToken = default)
     {
         var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "Unknown";
-        var response = await _authService.RefreshTokenAsync(request, ipAddress, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _authService.RefreshTokenAsync(request, ipAddress, cancellationToken);
+        var response = ApiResponse<AuthenticationResponse>.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -106,12 +93,16 @@ public class AuthenticationController : BaseApiController
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status401Unauthorized)]
     public async Task<IActionResult> Logout(CancellationToken cancellationToken = default)
     {
-        var userIdClaim = User.FindFirst("sub")?.Value;
+        var userIdClaim = User.FindFirst(NDTCore.Identity.Domain.Constants.ClaimTypes.Subject)?.Value;
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
-            return Unauthorized(ApiResponse.FailureResponse("Invalid user", 401));
+        {
+            var errorResult = ApiResponse.Unauthorized("Invalid user");
+            return StatusCode(errorResult.StatusCode, errorResult);
+        }
 
-        var response = await _authService.LogoutAsync(userId, cancellationToken);
-        return Ok(response);
+        var result = await _authService.LogoutAsync(userId, cancellationToken);
+        var response = ApiResponse.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -129,16 +120,16 @@ public class AuthenticationController : BaseApiController
         [FromBody] ChangePasswordRequest request,
         CancellationToken cancellationToken = default)
     {
-        var userIdClaim = User.FindFirst("sub")?.Value;
+        var userIdClaim = User.FindFirst(NDTCore.Identity.Domain.Constants.ClaimTypes.Subject)?.Value;
         if (string.IsNullOrEmpty(userIdClaim) || !Guid.TryParse(userIdClaim, out Guid userId))
-            return Unauthorized(ApiResponse.FailureResponse("Invalid user", 401));
+        {
+            var errorResult = ApiResponse.Unauthorized("Invalid user");
+            return StatusCode(errorResult.StatusCode, errorResult);
+        }
 
-        var response = await _authService.ChangePasswordAsync(userId, request, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _authService.ChangePasswordAsync(userId, request, cancellationToken);
+        var response = ApiResponse.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -154,8 +145,9 @@ public class AuthenticationController : BaseApiController
         [FromBody] ForgotPasswordRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _authService.ForgotPasswordAsync(request, cancellationToken);
-        return Ok(response);
+        var result = await _authService.ForgotPasswordAsync(request, cancellationToken);
+        var response = ApiResponse.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
@@ -172,12 +164,9 @@ public class AuthenticationController : BaseApiController
         [FromBody] ResetPasswordRequest request,
         CancellationToken cancellationToken = default)
     {
-        var response = await _authService.ResetPasswordAsync(request, cancellationToken);
-        
-        if (!response.Success)
-            return StatusCode(response.StatusCode, response);
-
-        return Ok(response);
+        var result = await _authService.ResetPasswordAsync(request, cancellationToken);
+        var response = ApiResponse.FromResult(result);
+        return StatusCode(response.StatusCode, response);
     }
 }
 
