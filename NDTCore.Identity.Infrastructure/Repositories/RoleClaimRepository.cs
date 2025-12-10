@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NDTCore.Identity.Contracts.Interfaces.Repositories;
 using NDTCore.Identity.Domain.Entities;

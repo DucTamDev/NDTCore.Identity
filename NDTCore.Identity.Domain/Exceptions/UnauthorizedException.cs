@@ -1,4 +1,4 @@
-﻿using NDTCore.Identity.Domain.Constants;
+using NDTCore.Identity.Domain.Constants;
 
 namespace NDTCore.Identity.Domain.Exceptions;
 

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using NDTCore.Identity.Contracts.Common.Pagination;
 using NDTCore.Identity.Contracts.Features.Roles.DTOs;

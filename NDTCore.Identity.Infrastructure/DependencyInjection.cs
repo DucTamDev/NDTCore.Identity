@@ -2,10 +2,14 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using NDTCore.Identity.Contracts.Interfaces.Infrastructure;
 using NDTCore.Identity.Contracts.Interfaces.Repositories;
 using NDTCore.Identity.Domain.Entities;
 using NDTCore.Identity.Infrastructure.Persistence.Context;
 using NDTCore.Identity.Infrastructure.Repositories;
+using NDTCore.Identity.Infrastructure.Services;
+using NDTCore.Identity.Infrastructure.Services.Email;
+using NDTCore.Identity.Infrastructure.Services.Infrastructure;
 
 namespace NDTCore.Identity.Infrastructure;
 
@@ -35,9 +39,6 @@ public static class DependencyInjection
 
     private static IServiceCollection AddRepositories(this IServiceCollection services)
     {
-        // Generic repository
-        services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
-
         // Unit of Work
         services.AddScoped<IUnitOfWork, UnitOfWork>();
 
@@ -79,8 +80,10 @@ public static class DependencyInjection
         services.AddHttpContextAccessor();
 
         // Add infrastructure services
-        services.AddScoped<Contracts.Interfaces.Infrastructure.IAuditService, Services.AuditService>();
-        services.AddScoped<Contracts.Interfaces.Infrastructure.ICurrentUserService, Services.CurrentUserService>();
+        services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<ICurrentUserService, CurrentUserService>();
+        services.AddScoped<IJwtTokenService, JwtTokenService>();
+        services.AddScoped<IEmailService, EmailService>();
 
         return services;
     }
@@ -119,4 +122,3 @@ public static class DependencyInjection
         return services;
     }
 }
-

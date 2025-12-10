@@ -1,5 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
-using NDTCore.Identity.Contracts.Interfaces.Services;
+using NDTCore.Identity.Contracts.Interfaces.Authorization;
 using System.Security.Claims;
 
 namespace NDTCore.Identity.Application.Features.Authorization.Handlers;

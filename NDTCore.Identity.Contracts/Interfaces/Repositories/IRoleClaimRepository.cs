@@ -1,4 +1,4 @@
-﻿using NDTCore.Identity.Domain.Entities;
+using NDTCore.Identity.Domain.Entities;
 
 namespace NDTCore.Identity.Contracts.Interfaces.Repositories;
 

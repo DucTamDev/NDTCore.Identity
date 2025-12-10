@@ -1,4 +1,4 @@
-﻿namespace NDTCore.Identity.Contracts.Interfaces.Repositories
+namespace NDTCore.Identity.Contracts.Interfaces.Repositories
 {
     public interface IUnitOfWork : IDisposable
     {

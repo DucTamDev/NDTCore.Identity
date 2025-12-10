@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.Caching.Memory;
 using NDTCore.Identity.Contracts.Interfaces.Repositories;
-using NDTCore.Identity.Contracts.Interfaces.Services;
+using NDTCore.Identity.Contracts.Interfaces.Authorization;
 using NDTCore.Identity.Domain.Entities;
 
 namespace NDTCore.Identity.Application.Features.Authorization.Services;

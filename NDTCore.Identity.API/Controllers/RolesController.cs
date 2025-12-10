@@ -1,10 +1,15 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NDTCore.Identity.API.Controllers.Base;
-using NDTCore.Identity.Contracts.Common;
+using NDTCore.Identity.Application.Features.Roles.Commands.CreateRole;
+using NDTCore.Identity.Application.Features.Roles.Commands.DeleteRole;
+using NDTCore.Identity.Application.Features.Roles.Commands.UpdateRole;
+using NDTCore.Identity.Application.Features.Roles.Queries.GetRoleById;
+using NDTCore.Identity.Application.Features.Roles.Queries.GetRolesList;
+using NDTCore.Identity.Application.Features.UserRoles.Commands.RemoveRoleFromUser;
+using NDTCore.Identity.Contracts.Common.Responses;
 using NDTCore.Identity.Contracts.Features.Roles.DTOs;
-using NDTCore.Identity.Contracts.Features.Roles.Requests;
-using NDTCore.Identity.Contracts.Interfaces.Services;
 
 namespace NDTCore.Identity.API.Controllers;
 
@@ -14,27 +19,29 @@ namespace NDTCore.Identity.API.Controllers;
 [ApiController]
 [Route("api/roles")]
 [Authorize(Policy = "AdminOnly")]
-public class RolesController : BaseApiController
+public class RolesController : ApiControllerBase
 {
-    private readonly IRoleService _roleService;
+    private readonly IMediator _mediator;
 
-    public RolesController(
-        IRoleService roleService)
+    public RolesController(IMediator mediator)
     {
-        _roleService = roleService;
+        _mediator = mediator;
     }
 
     /// <summary>
     /// Get all roles
     /// </summary>
+    /// <param name="query">Pagination and filter query</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>List of roles</returns>
+    /// <returns>Paginated list of roles</returns>
     [HttpGet]
-    [ProducesResponseType(typeof(ApiResponse<List<RoleDto>>), StatusCodes.Status200OK)]
-    public async Task<IActionResult> GetAllRoles(CancellationToken cancellationToken = default)
+    [ProducesResponseType(typeof(PagedApiResponse<RoleDto>), StatusCodes.Status200OK)]
+    public async Task<IActionResult> GetAllRoles(
+        [FromQuery] GetRolesListQuery query,
+        CancellationToken cancellationToken = default)
     {
-        var result = await _roleService.GetAllRolesAsync(cancellationToken);
-        var response = ApiResponse<List<RoleDto>>.FromResult(result);
+        var result = await _mediator.Send(query, cancellationToken);
+        var response = PagedApiResponse<RoleDto>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
 
@@ -51,7 +58,9 @@ public class RolesController : BaseApiController
         [FromRoute] Guid id,
         CancellationToken cancellationToken = default)
     {
-        var result = await _roleService.GetRoleByIdAsync(id, cancellationToken);
+        var query = new GetRoleByIdQuery { RoleId = id };
+
+        var result = await _mediator.Send(query, cancellationToken);
         var response = ApiResponse<RoleDto>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
@@ -59,18 +68,18 @@ public class RolesController : BaseApiController
     /// <summary>
     /// Create a new role
     /// </summary>
-    /// <param name="request">Create role request</param>
+    /// <param name="command">Create role command</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Created role</returns>
     [HttpPost]
-    [ProducesResponseType(typeof(ApiResponse<RoleDto>), StatusCodes.Status201Created)]
-    [ProducesResponseType(typeof(ApiResponse<RoleDto>), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse<Guid>), StatusCodes.Status201Created)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
     public async Task<IActionResult> CreateRole(
-        [FromBody] CreateRoleRequest request,
+        [FromBody] CreateRoleCommand command,
         CancellationToken cancellationToken = default)
     {
-        var result = await _roleService.CreateRoleAsync(request, cancellationToken);
-        var response = ApiResponse<RoleDto>.FromResult(result);
+        var result = await _mediator.Send(command, cancellationToken);
+        var response = ApiResponse<Guid>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
 
@@ -78,21 +87,24 @@ public class RolesController : BaseApiController
     /// Update an existing role
     /// </summary>
     /// <param name="id">Role ID</param>
-    /// <param name="request">Update role request</param>
+    /// <param name="command">Update role command</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Updated role</returns>
     [HttpPut("{id}")]
-    [ProducesResponseType(typeof(ApiResponse<RoleDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse<RoleDto>), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse<RoleDto>), StatusCodes.Status403Forbidden)]
-    [ProducesResponseType(typeof(ApiResponse<RoleDto>), StatusCodes.Status404NotFound)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status403Forbidden)]
+    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateRole(
         [FromRoute] Guid id,
-        [FromBody] UpdateRoleRequest request,
+        [FromBody] UpdateRoleCommand command,
         CancellationToken cancellationToken = default)
     {
-        var result = await _roleService.UpdateRoleAsync(id, request, cancellationToken);
-        var response = ApiResponse<RoleDto>.FromResult(result);
+        // Set RoleId from route parameter
+        var commandWithId = command with { RoleId = id };
+
+        var result = await _mediator.Send(commandWithId, cancellationToken);
+        var response = ApiResponse.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
 
@@ -111,26 +123,9 @@ public class RolesController : BaseApiController
         [FromRoute] Guid id,
         CancellationToken cancellationToken = default)
     {
-        var result = await _roleService.DeleteRoleAsync(id, cancellationToken);
-        var response = ApiResponse.FromResult(result);
-        return StatusCode(response.StatusCode, response);
-    }
+        var command = new DeleteRoleCommand { RoleId = id };
 
-    /// <summary>
-    /// Assign role to user
-    /// </summary>
-    /// <param name="request">Assign role request</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Success response</returns>
-    [HttpPost("assign")]
-    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> AssignRoleToUser(
-        [FromBody] AssignRoleRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await _roleService.AssignRoleToUserAsync(request, cancellationToken);
+        var result = await _mediator.Send(command, cancellationToken);
         var response = ApiResponse.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
@@ -151,7 +146,13 @@ public class RolesController : BaseApiController
         [FromRoute] Guid roleId,
         CancellationToken cancellationToken = default)
     {
-        var result = await _roleService.RemoveRoleFromUserAsync(userId, roleId, cancellationToken);
+        var command = new RemoveRoleFromUserCommand
+        {
+            UserId = userId,
+            RoleId = roleId
+        };
+
+        var result = await _mediator.Send(command, cancellationToken);
         var response = ApiResponse.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }

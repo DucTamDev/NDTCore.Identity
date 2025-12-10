@@ -1,4 +1,4 @@
-﻿using NDTCore.Identity.Domain.BaseEntities;
+using NDTCore.Identity.Domain.Common;
 
 namespace NDTCore.Identity.Domain.Entities;
 

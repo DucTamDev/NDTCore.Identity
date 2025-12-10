@@ -1,4 +1,4 @@
-﻿using NDTCore.Identity.Contracts.Common.Results;
+using NDTCore.Identity.Contracts.Common.Results;
 
 namespace NDTCore.Identity.Contracts.Common.Pagination;
 

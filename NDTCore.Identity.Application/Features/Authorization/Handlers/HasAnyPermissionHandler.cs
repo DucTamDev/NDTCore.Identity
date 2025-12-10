@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Authorization;
 using NDTCore.Identity.Contracts.Authorization.Requirements;
-using NDTCore.Identity.Contracts.Interfaces.Services;
+using NDTCore.Identity.Contracts.Interfaces.Authorization;
 
 namespace NDTCore.Identity.Application.Features.Authorization.Handlers;
 

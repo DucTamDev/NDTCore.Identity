@@ -1,4 +1,4 @@
-﻿namespace NDTCore.Identity.Contracts.Common.Pagination;
+namespace NDTCore.Identity.Contracts.Common.Pagination;
 
 /// <summary>
 /// Provides helper methods for calculating pagination indexes and counts.

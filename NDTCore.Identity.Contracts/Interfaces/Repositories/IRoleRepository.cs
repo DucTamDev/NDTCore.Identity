@@ -1,4 +1,4 @@
-﻿using NDTCore.Identity.Contracts.Common.Pagination;
+using NDTCore.Identity.Contracts.Common.Pagination;
 using NDTCore.Identity.Contracts.Features.Roles.DTOs;
 using NDTCore.Identity.Domain.Entities;
 

@@ -1,4 +1,4 @@
-﻿using Microsoft.EntityFrameworkCore.Storage;
+using Microsoft.EntityFrameworkCore.Storage;
 using NDTCore.Identity.Contracts.Interfaces.Repositories;
 using NDTCore.Identity.Infrastructure.Persistence.Context;
 

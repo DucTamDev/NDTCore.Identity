@@ -1,4 +1,4 @@
-﻿namespace NDTCore.Identity.Contracts.Common.Pagination;
+namespace NDTCore.Identity.Contracts.Common.Pagination;
 
 ////// <summary>
 /// Represents pagination metadata for paginated API responses.

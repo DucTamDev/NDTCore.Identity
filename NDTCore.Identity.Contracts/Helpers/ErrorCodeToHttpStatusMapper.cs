@@ -1,4 +1,4 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
 using NDTCore.Identity.Domain.Constants;
 
 namespace NDTCore.Identity.Contracts.Helpers;

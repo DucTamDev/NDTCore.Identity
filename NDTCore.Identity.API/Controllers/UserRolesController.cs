@@ -1,11 +1,15 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NDTCore.Identity.API.Controllers.Base;
-using NDTCore.Identity.Contracts.Common;
-using NDTCore.Identity.Contracts.Extensions;
+using NDTCore.Identity.Application.Features.UserRoles.Commands.AssignRoleToUser;
+using NDTCore.Identity.Application.Features.UserRoles.Commands.RemoveRoleFromUser;
+using NDTCore.Identity.Application.Features.UserRoles.Queries.GetUserRole;
+using NDTCore.Identity.Application.Features.UserRoles.Queries.GetUserRoles;
+using NDTCore.Identity.Application.Features.UserRoles.Queries.GetUserRolesByRoleId;
+using NDTCore.Identity.Application.Features.UserRoles.Queries.GetUserRolesByUserId;
+using NDTCore.Identity.Contracts.Common.Responses;
 using NDTCore.Identity.Contracts.Features.UserRoles.DTOs;
-using NDTCore.Identity.Contracts.Features.UserRoles.Requests;
-using NDTCore.Identity.Contracts.Interfaces.Services;
 
 namespace NDTCore.Identity.API.Controllers;
 
@@ -15,32 +19,29 @@ namespace NDTCore.Identity.API.Controllers;
 [ApiController]
 [Route("api/user-roles")]
 [Authorize(Policy = "AdminOnly")]
-public class UserRolesController : BaseApiController
+public class UserRolesController : ApiControllerBase
 {
-    private readonly IUserRoleService _userRoleService;
+    private readonly IMediator _mediator;
 
-    public UserRolesController(
-        IUserRoleService userRoleService)
+    public UserRolesController(IMediator mediator)
     {
-        _userRoleService = userRoleService;
+        _mediator = mediator;
     }
 
     /// <summary>
     /// Get paginated list of user-role assignments
     /// </summary>
-    /// <param name="request">Filter and pagination request</param>
+    /// <param name="query">Filter and pagination query</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Paginated list of user-role assignments</returns>
     [HttpGet]
     [ProducesResponseType(typeof(PagedApiResponse<UserRoleDto>), StatusCodes.Status200OK)]
     public async Task<IActionResult> GetUserRoles(
-        [FromQuery] GetUserRolesRequest request,
+        [FromQuery] GetUserRolesQuery query,
         CancellationToken cancellationToken = default)
     {
-        var result = await _userRoleService.GetUserRolesAsync(request, cancellationToken);
-
-        var response = result.ToPagedApiResponse();
-
+        var result = await _mediator.Send(query, cancellationToken);
+        var response = PagedApiResponse<UserRoleDto>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
 
@@ -57,10 +58,9 @@ public class UserRolesController : BaseApiController
         [FromRoute] Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var result = await _userRoleService.GetUserRolesByUserIdAsync(userId, cancellationToken);
-
+        var query = new GetUserRolesByUserIdQuery { UserId = userId };
+        var result = await _mediator.Send(query, cancellationToken);
         var response = ApiResponse<List<UserRoleDto>>.FromResult(result);
-
         return StatusCode(response.StatusCode, response);
     }
 
@@ -77,7 +77,8 @@ public class UserRolesController : BaseApiController
         [FromRoute] Guid roleId,
         CancellationToken cancellationToken = default)
     {
-        var result = await _userRoleService.GetUserRolesByRoleIdAsync(roleId, cancellationToken);
+        var query = new GetUserRolesByRoleIdQuery { RoleId = roleId };
+        var result = await _mediator.Send(query, cancellationToken);
         var response = ApiResponse<List<UserRoleDto>>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
@@ -97,17 +98,16 @@ public class UserRolesController : BaseApiController
         [FromRoute] Guid roleId,
         CancellationToken cancellationToken = default)
     {
-        var result = await _userRoleService.GetUserRoleAsync(userId, roleId, cancellationToken);
-
+        var query = new GetUserRoleQuery { UserId = userId, RoleId = roleId };
+        var result = await _mediator.Send(query, cancellationToken);
         var response = ApiResponse<UserRoleDto>.FromResult(result);
-
         return StatusCode(response.StatusCode, response);
     }
 
     /// <summary>
     /// Assign a role to a user
     /// </summary>
-    /// <param name="request">Assign role request</param>
+    /// <param name="command">Assign role command</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Created user-role assignment</returns>
     [HttpPost]
@@ -115,33 +115,10 @@ public class UserRolesController : BaseApiController
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AssignRoleToUser(
-        [FromBody] CreateUserRoleRequest request,
+        [FromBody] AssignRoleToUserCommand command,
         CancellationToken cancellationToken = default)
     {
-        var result = await _userRoleService.AssignRoleToUserAsync(request, cancellationToken);
-        var response = ApiResponse<UserRoleDto>.FromResult(result);
-        return StatusCode(response.StatusCode, response);
-    }
-
-    /// <summary>
-    /// Update user-role assignment metadata
-    /// </summary>
-    /// <param name="userId">User ID</param>
-    /// <param name="roleId">Role ID</param>
-    /// <param name="request">Update request</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Updated user-role assignment</returns>
-    [HttpPut("{userId}/{roleId}")]
-    [ProducesResponseType(typeof(ApiResponse<UserRoleDto>), StatusCodes.Status200OK)]
-    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status400BadRequest)]
-    [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> UpdateUserRole(
-        [FromRoute] Guid userId,
-        [FromRoute] Guid roleId,
-        [FromBody] UpdateUserRoleRequest request,
-        CancellationToken cancellationToken = default)
-    {
-        var result = await _userRoleService.UpdateUserRoleAsync(userId, roleId, request, cancellationToken);
+        var result = await _mediator.Send(command, cancellationToken);
         var response = ApiResponse<UserRoleDto>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
@@ -162,7 +139,8 @@ public class UserRolesController : BaseApiController
         [FromRoute] Guid roleId,
         CancellationToken cancellationToken = default)
     {
-        var result = await _userRoleService.RemoveRoleFromUserAsync(userId, roleId, cancellationToken);
+        var command = new RemoveRoleFromUserCommand { UserId = userId, RoleId = roleId };
+        var result = await _mediator.Send(command, cancellationToken);
         var response = ApiResponse.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }

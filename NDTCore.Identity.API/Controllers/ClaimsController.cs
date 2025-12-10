@@ -1,10 +1,19 @@
+using MediatR;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using NDTCore.Identity.API.Controllers.Base;
-using NDTCore.Identity.Contracts.Common;
+using NDTCore.Identity.Application.Features.RoleClaims.Commands.AddRoleClaim;
+using NDTCore.Identity.Application.Features.RoleClaims.Commands.RemoveRoleClaim;
+using NDTCore.Identity.Application.Features.RoleClaims.Commands.UpdateRoleClaim;
+using NDTCore.Identity.Application.Features.RoleClaims.Queries.GetRoleClaimById;
+using NDTCore.Identity.Application.Features.RoleClaims.Queries.GetRoleClaims;
+using NDTCore.Identity.Application.Features.UserClaims.Commands.AddUserClaim;
+using NDTCore.Identity.Application.Features.UserClaims.Commands.RemoveUserClaim;
+using NDTCore.Identity.Application.Features.UserClaims.Commands.UpdateUserClaim;
+using NDTCore.Identity.Application.Features.UserClaims.Queries.GetUserClaimById;
+using NDTCore.Identity.Application.Features.UserClaims.Queries.GetUserClaims;
+using NDTCore.Identity.Contracts.Common.Responses;
 using NDTCore.Identity.Contracts.Features.Claims.DTOs;
-using NDTCore.Identity.Contracts.Features.Claims.Requests;
-using NDTCore.Identity.Contracts.Interfaces.Services;
 
 namespace NDTCore.Identity.API.Controllers;
 
@@ -14,14 +23,13 @@ namespace NDTCore.Identity.API.Controllers;
 [ApiController]
 [Route("api")]
 [Authorize(Policy = "AdminOnly")]
-public class ClaimsController : BaseApiController
+public class ClaimsController : ApiControllerBase
 {
-    private readonly IClaimService _claimService;
+    private readonly IMediator _mediator;
 
-    public ClaimsController(
-        IClaimService claimService)
+    public ClaimsController(IMediator mediator)
     {
-        _claimService = claimService;
+        _mediator = mediator;
     }
 
     // User Claims Endpoints
@@ -39,7 +47,8 @@ public class ClaimsController : BaseApiController
         [FromRoute] Guid userId,
         CancellationToken cancellationToken = default)
     {
-        var result = await _claimService.GetUserClaimsAsync(userId, cancellationToken);
+        var query = new GetUserClaimsQuery { UserId = userId };
+        var result = await _mediator.Send(query, cancellationToken);
         var response = ApiResponse<List<UserClaimDto>>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
@@ -57,7 +66,8 @@ public class ClaimsController : BaseApiController
         [FromRoute] int claimId,
         CancellationToken cancellationToken = default)
     {
-        var result = await _claimService.GetUserClaimByIdAsync(claimId, cancellationToken);
+        var query = new GetUserClaimByIdQuery { ClaimId = claimId };
+        var result = await _mediator.Send(query, cancellationToken);
         var response = ApiResponse<UserClaimDto>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
@@ -66,7 +76,7 @@ public class ClaimsController : BaseApiController
     /// Add a claim to a user
     /// </summary>
     /// <param name="userId">User ID</param>
-    /// <param name="request">Create claim request</param>
+    /// <param name="command">Add user claim command</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Created user claim</returns>
     [HttpPost("users/{userId}/claims")]
@@ -75,10 +85,13 @@ public class ClaimsController : BaseApiController
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AddUserClaim(
         [FromRoute] Guid userId,
-        [FromBody] CreateClaimRequest request,
+        [FromBody] AddUserClaimCommand command,
         CancellationToken cancellationToken = default)
     {
-        var result = await _claimService.AddUserClaimAsync(userId, request, cancellationToken);
+        // Set UserId from route parameter
+        var commandWithUserId = command with { UserId = userId };
+
+        var result = await _mediator.Send(commandWithUserId, cancellationToken);
         var response = ApiResponse<UserClaimDto>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
@@ -87,7 +100,7 @@ public class ClaimsController : BaseApiController
     /// Update a user claim
     /// </summary>
     /// <param name="claimId">Claim ID</param>
-    /// <param name="request">Update claim request</param>
+    /// <param name="command">Update user claim command</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Updated user claim</returns>
     [HttpPut("user-claims/{claimId}")]
@@ -96,10 +109,13 @@ public class ClaimsController : BaseApiController
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateUserClaim(
         [FromRoute] int claimId,
-        [FromBody] UpdateClaimRequest request,
+        [FromBody] UpdateUserClaimCommand command,
         CancellationToken cancellationToken = default)
     {
-        var result = await _claimService.UpdateUserClaimAsync(claimId, request, cancellationToken);
+        // Set ClaimId from route parameter
+        var commandWithId = command with { ClaimId = claimId };
+
+        var result = await _mediator.Send(commandWithId, cancellationToken);
         var response = ApiResponse<UserClaimDto>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
@@ -118,7 +134,8 @@ public class ClaimsController : BaseApiController
         [FromRoute] int claimId,
         CancellationToken cancellationToken = default)
     {
-        var result = await _claimService.RemoveUserClaimAsync(claimId, cancellationToken);
+        var command = new RemoveUserClaimCommand { ClaimId = claimId };
+        var result = await _mediator.Send(command, cancellationToken);
         var response = ApiResponse.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
@@ -138,7 +155,8 @@ public class ClaimsController : BaseApiController
         [FromRoute] Guid roleId,
         CancellationToken cancellationToken = default)
     {
-        var result = await _claimService.GetRoleClaimsAsync(roleId, cancellationToken);
+        var query = new GetRoleClaimsQuery { RoleId = roleId };
+        var result = await _mediator.Send(query, cancellationToken);
         var response = ApiResponse<List<RoleClaimDto>>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
@@ -156,7 +174,8 @@ public class ClaimsController : BaseApiController
         [FromRoute] int claimId,
         CancellationToken cancellationToken = default)
     {
-        var result = await _claimService.GetRoleClaimByIdAsync(claimId, cancellationToken);
+        var query = new GetRoleClaimByIdQuery { ClaimId = claimId };
+        var result = await _mediator.Send(query, cancellationToken);
         var response = ApiResponse<RoleClaimDto>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
@@ -165,7 +184,7 @@ public class ClaimsController : BaseApiController
     /// Add a claim to a role
     /// </summary>
     /// <param name="roleId">Role ID</param>
-    /// <param name="request">Create claim request</param>
+    /// <param name="command">Add role claim command</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Created role claim</returns>
     [HttpPost("roles/{roleId}/claims")]
@@ -174,10 +193,13 @@ public class ClaimsController : BaseApiController
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> AddRoleClaim(
         [FromRoute] Guid roleId,
-        [FromBody] CreateClaimRequest request,
+        [FromBody] AddRoleClaimCommand command,
         CancellationToken cancellationToken = default)
     {
-        var result = await _claimService.AddRoleClaimAsync(roleId, request, cancellationToken);
+        // Set RoleId from route parameter
+        var commandWithRoleId = command with { RoleId = roleId };
+
+        var result = await _mediator.Send(commandWithRoleId, cancellationToken);
         var response = ApiResponse<RoleClaimDto>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
@@ -186,7 +208,7 @@ public class ClaimsController : BaseApiController
     /// Update a role claim
     /// </summary>
     /// <param name="claimId">Claim ID</param>
-    /// <param name="request">Update claim request</param>
+    /// <param name="command">Update role claim command</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>Updated role claim</returns>
     [HttpPut("role-claims/{claimId}")]
@@ -195,10 +217,13 @@ public class ClaimsController : BaseApiController
     [ProducesResponseType(typeof(ApiResponse), StatusCodes.Status404NotFound)]
     public async Task<IActionResult> UpdateRoleClaim(
         [FromRoute] int claimId,
-        [FromBody] UpdateClaimRequest request,
+        [FromBody] UpdateRoleClaimCommand command,
         CancellationToken cancellationToken = default)
     {
-        var result = await _claimService.UpdateRoleClaimAsync(claimId, request, cancellationToken);
+        // Set ClaimId from route parameter
+        var commandWithId = command with { ClaimId = claimId };
+
+        var result = await _mediator.Send(commandWithId, cancellationToken);
         var response = ApiResponse<RoleClaimDto>.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
@@ -217,9 +242,9 @@ public class ClaimsController : BaseApiController
         [FromRoute] int claimId,
         CancellationToken cancellationToken = default)
     {
-        var result = await _claimService.RemoveRoleClaimAsync(claimId, cancellationToken);
+        var command = new RemoveRoleClaimCommand { ClaimId = claimId };
+        var result = await _mediator.Send(command, cancellationToken);
         var response = ApiResponse.FromResult(result);
         return StatusCode(response.StatusCode, response);
     }
 }
-

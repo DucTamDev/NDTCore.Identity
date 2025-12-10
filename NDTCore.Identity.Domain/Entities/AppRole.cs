@@ -1,5 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
-using NDTCore.Identity.Domain.BaseEntities;
+using Microsoft.AspNetCore.Identity;
+using NDTCore.Identity.Domain.Common;
 
 namespace NDTCore.Identity.Domain.Entities
 {

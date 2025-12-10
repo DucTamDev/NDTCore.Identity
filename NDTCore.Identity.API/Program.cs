@@ -1,13 +1,11 @@
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi.Models;
-using NDTCore.Identity.API.Configuration;
-using NDTCore.Identity.API.Filters;
-using NDTCore.Identity.API.HealthChecks;
-using NDTCore.Identity.API.Middleware.Extensions;
+using NDTCore.Identity.API.Configuration.Startup;
+using NDTCore.Identity.API.Extensions;
 using NDTCore.Identity.Application;
-using NDTCore.Identity.Contracts.Configuration;
+using NDTCore.Identity.Contracts.Settings;
 using NDTCore.Identity.Infrastructure;
+using NDTCore.Identity.Infrastructure.HealthChecks;
 using Serilog;
 using System.Text;
 using System.Threading.RateLimiting;
@@ -105,95 +103,19 @@ try
         options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
     });
 
-    // CORS
-    var allowedOrigins = builder.Configuration.GetSection("AllowedOrigins").Get<string[]>()
-        ?? new[] { "*" };
-
-    builder.Services.AddCors(options =>
-    {
-        options.AddPolicy("DefaultCorsPolicy", policy =>
-        {
-            if (allowedOrigins.Contains("*"))
-            {
-                policy.AllowAnyOrigin()
-                      .AllowAnyMethod()
-                      .AllowAnyHeader();
-            }
-            else
-            {
-                policy.WithOrigins(allowedOrigins)
-                      .AllowAnyMethod()
-                      .AllowAnyHeader()
-                      .AllowCredentials();
-            }
-        });
-    });
+    builder.Services.AddCorsConfiguration(builder.Configuration);
 
     // Health Checks
     builder.Services.AddHealthChecks()
         .AddCheck<DatabaseHealthCheck>("database")
         .AddCheck<IdentityHealthCheck>("identity");
 
-    builder.Services.AddControllers(options =>
-    {
-        options.Filters.Add<ValidationFilter>();
-    });
+    builder.Services.AddControllers();
 
     builder.Services.AddEndpointsApiExplorer();
 
     // Swagger Configuration
-    builder.Services.AddSwaggerGen(options =>
-    {
-        options.SwaggerDoc("v1", new OpenApiInfo
-        {
-            Title = "NDTCore Identity API",
-            Version = "v1",
-            Description = "Production-ready Identity and Authentication Service using Clean Architecture",
-            Contact = new OpenApiContact
-            {
-                Name = "NDTCore Team",
-                Email = "support@ndtcore.com"
-            },
-            License = new OpenApiLicense
-            {
-                Name = "MIT License",
-                Url = new Uri("https://opensource.org/licenses/MIT")
-            }
-        });
-
-        options.AddSecurityDefinition("Bearer", new OpenApiSecurityScheme
-        {
-            Name = "Authorization",
-            Type = SecuritySchemeType.Http,
-            Scheme = "Bearer",
-            BearerFormat = "JWT",
-            In = ParameterLocation.Header,
-            Description = "Enter 'Bearer' [space] and then your token"
-        });
-
-        options.AddSecurityRequirement(new OpenApiSecurityRequirement
-        {
-            {
-                new OpenApiSecurityScheme
-                {
-                    Reference = new OpenApiReference
-                    {
-                        Type = ReferenceType.SecurityScheme,
-                        Id = "Bearer"
-                    }
-                },
-                Array.Empty<string>()
-            }
-        });
-
-        // Include XML comments if available
-        var xmlFile = $"{System.Reflection.Assembly.GetExecutingAssembly().GetName().Name}.xml";
-        var xmlPath = Path.Combine(AppContext.BaseDirectory, xmlFile);
-        if (File.Exists(xmlPath))
-        {
-            options.IncludeXmlComments(xmlPath);
-        }
-    });
+    builder.Services.AddSwaggerDocumentation();
 
     var app = builder.Build();
 
@@ -212,8 +134,7 @@ try
     }
 
     // Middleware pipeline
-    app.UseGlobalExceptionHandling();
-    app.UseRequestLogging();
+    app.UseWebApplicationExtensions();
 
     app.UseHttpsRedirection();
 
